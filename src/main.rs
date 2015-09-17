@@ -34,33 +34,33 @@ fn main() {
     auth_headers.set(XAuthEmail(cloudflare_email.to_owned()));
 
     let mut res = client
-    	.get(zonesUrl)
+        .get(zonesUrl)
         .header(Connection::close())
         .headers(auth_headers)
         .send()
         .unwrap();
 
- 	// Read the Response.
+    // Read the Response.
     let mut body = String::new();
     //res.read_to_string(&mut body).unwrap();
 
     // serde
     // let json = json::from_str(body).unwrap();
-	// let json: serde_json::value::Value = serde_json::from_str(&body).unwrap();
-	
-	let json: serde_json::value::Value = serde_json::from_iter(res.bytes()).unwrap();
+    // let json: serde_json::value::Value = serde_json::from_str(&body).unwrap();
+    
+    let json: serde_json::value::Value = serde_json::from_iter(res.bytes()).unwrap();
 
-	let zoneIds = json
-		.as_object().unwrap()
-		.get("result").unwrap()
-		.as_array().unwrap()
-		.iter()
-		.map(|ref id| id.find("id").unwrap()
-			.as_string().unwrap());
+    let zoneIds = json
+        .as_object().unwrap()
+        .get("result").unwrap()
+        .as_array().unwrap()
+        .iter()
+        .map(|ref id| id.find("id").unwrap()
+            .as_string().unwrap());
 
-	for id in zoneIds {
-		println!("{}", id);
-	}
+    for id in zoneIds {
+        println!("{}", id);
+    }
 
     println!("Response: {}", res.status);
     println!("Headers:\n{}", res.headers);
