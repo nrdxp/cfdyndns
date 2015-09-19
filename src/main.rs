@@ -1,4 +1,3 @@
-extern crate env_logger;
 #[macro_use] 
 extern crate hyper;
 extern crate serde;
@@ -11,7 +10,8 @@ use hyper::header::Connection;
 use serde_json::value::*;
 
 use std::env;
-use std::io::Read;
+use std::io;
+use std::io::prelude::*;
 
 use trust_dns::rr::dns_class::DNSClass;
 use trust_dns::rr::record_type::RecordType;
@@ -24,6 +24,7 @@ header! { (XAuthEmail, "X-Auth-Email") => [String] }
 
 // TODO(colemickens): none of the implementations handle paging properly
 
+// overloaded function. no body is treated as a get, body is treated as a put
 fn cloudflare_api(client: &hyper::client::Client, url: &str, body: Option<&str>) -> Result<Value, String> {
     let cloudflare_apikey = env::var("CLOUDFLARE_APIKEY").expect("missing apikey");
     let cloudflare_email = env::var("CLOUDFLARE_EMAIL").expect("missing email");
@@ -43,18 +44,17 @@ fn cloudflare_api(client: &hyper::client::Client, url: &str, body: Option<&str>)
         println!("she's gonna blow! {}", response.status);
         let mut body = String::new();
         response.read_to_string(&mut body).unwrap();
-        println!("{}", body);
-        println!("exit early"); // TODO(colemickens): fix
+        return Err(body);
     }
 
     let response_json: Value = serde_json::from_iter(response.by_ref().bytes()).unwrap();
 
-    let status = response_json
+    let success = response_json
         .as_object().unwrap()
         .get("success").unwrap()
         .as_boolean().unwrap();
-    if !status {
-        println!("request sent 200, but cloudflare reported !success"); // TODO(colemickens): this is inaccurate due to above "fix" todo
+    if !success {
+        println!("response status={}, but cloudflare success={}", response.status, success);
     }
 
     Ok(response_json)
@@ -80,8 +80,6 @@ fn get_current_ip() -> Result<String, ()> {
 }
 
 fn main() {
-    env_logger::init().unwrap();
-
     let current_ip = get_current_ip().expect("must have current ip");
     let client = Client::new();
     let cloudflare_records_env = env::var("CLOUDFLARE_RECORDS").expect("missing records");
@@ -114,27 +112,30 @@ fn main() {
             let record_type = record.find("type").unwrap().as_string().unwrap();
             let record_name = record.find("name").unwrap().as_string().unwrap();
             let record_content = record.find("content").unwrap().as_string().unwrap();
-
+            
+            if record_content == current_ip
+            {
+                println!("{} skipped, up to date", record_name);
+                continue;
+            }
+            
             if record_type == "A" && cloudflare_records.contains(&record_name) {
-                if record_content == current_ip
-                {
-                    println!("{} skipped, up to date", record_name);
-                    continue;
-                } else {
-                    println!("{} needs update... ({} != {})", record_name, record_content, current_ip);
-                    
-                    let record_url = format!("https://api.cloudflare.com/client/v4/zones/{}/dns_records/{}", zone_id, record_id);
-                    let record_update_body = format!(
-                        "{{ \"id\": \"{}\", \"name\": \"{}\", \"content\": \"{}\", \"type\": \"{}\" }}",
-                        record_id,
-                        record_name,
-                        current_ip,
-                        record_type);
-                    println!("{}", record_update_body);
-                    cloudflare_api(&client, &*record_url, Some(&*record_update_body)).unwrap();
-                    
-                    println!("{} updated!", record_name);
-                }
+                print!("{} ({} -> {})... ", record_name, record_content, current_ip);
+                io::stdout().flush().ok();
+                
+                let record_url = format!(
+                    "https://api.cloudflare.com/client/v4/zones/{}/dns_records/{}",
+                    zone_id,
+                    record_id);
+                let record_update_body = format!(
+                    r#"{{ "id": "{}", "name": "{}", "content": "{}", "type": "{}" }}"#,
+                    record_id,
+                    record_name,
+                    current_ip,
+                    record_type);
+                cloudflare_api(&client, &*record_url, Some(&*record_update_body)).unwrap();
+                
+                println!("done")
             }
         }
     }
