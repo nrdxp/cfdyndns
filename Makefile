@@ -1,4 +1,9 @@
 APIKEY:=`cat apikey.md`
+EXPORTSTUFF:=`cut -d= -f1 /etc/cloudflare-dyndns/cloudflare-dyndns.config`
 
 run:
-	CLOUDFLARE_APIKEY=$(APIKEY) CLOUDFLARE_EMAIL=cole.mickens@gmail.com cargo run --verbose
+	source /etc/cloudflare-dyndns/cloudflare-dyndns.config; \
+	export CLOUDFLARE_APIKEY; \
+	export CLOUDFLARE_EMAIL; \
+	export CLOUDFLARE_RECORDS; \
+	cargo run --verbose
