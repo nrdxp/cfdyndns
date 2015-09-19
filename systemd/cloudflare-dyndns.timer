@@ -1,0 +1,12 @@
+[Unit]
+Description=Runs cloudflare-dyndns every 5mins
+
+[Timer]
+# Time to wait after booting before we run first time
+OnBootSec=1min
+# Time between running each consecutive time
+OnUnitActiveSec=5min
+Unit=cloudflare-dyndns.service
+
+[Install]
+WantedBy=multi-user.target

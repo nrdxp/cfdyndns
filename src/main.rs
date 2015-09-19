@@ -41,7 +41,6 @@ fn cloudflare_api(client: &hyper::client::Client, url: &str, body: Option<&str>)
         .send().unwrap();
 
     if response.status != hyper::status::StatusCode::Ok {
-        println!("she's gonna blow! {}", response.status);
         let mut body = String::new();
         response.read_to_string(&mut body).unwrap();
         return Err(body);

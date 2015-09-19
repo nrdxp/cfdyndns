@@ -1,0 +1,10 @@
+[Unit]
+Description=Cloudflare-dyndns
+
+[Service]
+Type=simple
+ExecStart=/home/cole/Code/colemickens/cloudflare-dyndns-rust/target/release/cloudflare-dyndns
+EnvironmentFile=/etc/cloudflare-dyndns/cloudflare-dyndns.config
+
+[Install]
+WantedBy=multi-user.target
