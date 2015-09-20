@@ -2,11 +2,11 @@
 
 Reimplementation of [cloudflare-dyndns](https://github.com/colemickens/cloudflare-dyndns) in [Rust](https://www.rust-lang.org).
 
-Builds with `rust 1.2.0 stable`.
+Builds with `rust 1.3.0 stable`, possibly `rust 1.2.0` as well.
 
 ## building
 
-1. install `make` and `rust 1.2.0`.
+1. install `make` and `rust 1.3.0`.
 
 2. clone this repo
 
@@ -62,7 +62,3 @@ Sep 20 15:41:46 chimera cloudflare-dyndns[23288]: mickens.xxx skipped, up to dat
 Sep 20 15:41:46 chimera cloudflare-dyndns[23288]: *.mickens.me skipped, up to date
 Sep 20 15:41:46 chimera cloudflare-dyndns[23288]: mickens.me skipped, up to date
 ```
-
-## todo
-
-1. pin dependency versions

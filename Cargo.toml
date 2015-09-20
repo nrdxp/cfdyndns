@@ -5,9 +5,7 @@ authors = ["Cole Mickens <cole.mickens@gmail.com>"]
 
 [dependencies]
 env_logger = "0.3.1"
-serde = "*"
-serde_json = "*"
+hyper = "0.6.13"
+serde = "0.6.0"
+serde_json = "0.6.0"
 trust-dns = "0.2.0"
-
-[dependencies.hyper]
-git = "https://github.com/hyperium/hyper.git"
