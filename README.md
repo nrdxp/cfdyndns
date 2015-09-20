@@ -10,7 +10,25 @@ Builds with `rust 1.2.0 stable`.
 
 2. clone this repo
 
-3. `make`
+3. (debug build) `make build`
+
+4. (release build) `make build-release`
+
+## running
+
+1. (debug build) `make run`
+
+2. (debug build) `make run-release`
+
+## installing as systemd service
+
+1. edit systemd/cloudflare-dyndns.service to point to your `cloudflare-dyndns` binary.
+
+2. `make install-systemd`
+
+## uninstalling systemd service
+
+1. `make uninstall-systemd`
 
 ## todo
 
