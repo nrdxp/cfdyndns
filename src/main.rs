@@ -27,8 +27,8 @@ const NS1_GOOGLE_COM_IP_ADDR: &'static str = "216.239.32.10";
 
 // overloaded function. no body is treated as a get, body is treated as a put
 fn cloudflare_api(client: &hyper::client::Client, url: &str, body: Option<&str>) -> Result<Value, String> {
-    let cloudflare_apikey = env::var("CLOUDFLARE_APIKEY").expect("missing apikey");
-    let cloudflare_email = env::var("CLOUDFLARE_EMAIL").expect("missing email");
+    let cloudflare_apikey = env::var("CLOUDFLARE_APIKEY").ok().expect("missing apikey");
+    let cloudflare_email = env::var("CLOUDFLARE_EMAIL").ok().expect("missing email");
 
     let builder = match body {
         Some(body) => { client.put(url).body(body) }
@@ -90,9 +90,9 @@ fn get_current_ip() -> Result<String, ()> {
 }
 
 fn main() {
-    let current_ip = get_current_ip().expect("must have current ip");
+    let current_ip = get_current_ip().ok().expect("must have current ip");
     let client = Client::new();
-    let cloudflare_records_env = env::var("CLOUDFLARE_RECORDS").expect("missing records");
+    let cloudflare_records_env = env::var("CLOUDFLARE_RECORDS").ok().expect("missing records");
     let cloudflare_records: Vec<&str> = cloudflare_records_env.split(|c: char| c == ',').collect();
 
     let zones_url = "https://api.cloudflare.com/client/v4/zones";
