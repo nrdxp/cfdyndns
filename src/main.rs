@@ -23,6 +23,7 @@ header! { (XAuthKey, "X-Auth-Key") => [String] }
 header! { (XAuthEmail, "X-Auth-Email") => [String] }
 
 // TODO(colemickens): none of the implementations handle paging properly
+const NS1_GOOGLE_COM_IP_ADDR: &'static str = "216.239.32.10";
 
 // overloaded function. no body is treated as a get, body is treated as a put
 fn cloudflare_api(client: &hyper::client::Client, url: &str, body: Option<&str>) -> Result<Value, String> {
@@ -60,7 +61,7 @@ fn cloudflare_api(client: &hyper::client::Client, url: &str, body: Option<&str>)
 }
 
 fn get_current_ip() -> Result<String, ()> {
-    let client = DnsClient::new(("8.8.8.8").parse().unwrap()).unwrap();
+    let client = DnsClient::new((NS1_GOOGLE_COM_IP_ADDR).parse().unwrap()).unwrap();
 
     let name = domain::Name::with_labels(vec![
         "o-o".to_string(),
@@ -69,6 +70,16 @@ fn get_current_ip() -> Result<String, ()> {
         "google".to_string(),
         "com".to_string()]);
     let response = client.query(name.clone(), DNSClass::IN, RecordType::TXT).unwrap();
+    
+    /*
+    for answer in response.get_answers() {
+        if let &RData::TXT{ ref txt_data } = answer.get_rdata() {
+            for txtdatav in txt_data {
+                println!("{}", txtdatav);
+            }
+        }
+    }
+    */
 
     let record = &response.get_answers()[0];
     if let &RData::TXT{ ref txt_data } = record.get_rdata() {
