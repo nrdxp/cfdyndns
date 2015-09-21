@@ -18,11 +18,13 @@ Builds with `rust 1.3.0 stable`, possibly `rust 1.2.0` as well.
 
 1. (debug build) `make run`
 
-2. (debug build) `make run-release`
+2. (release build) `make run-release`
 
 ## installing as systemd service
 
-1. edit systemd/cloudflare-dyndns.service to point to your `cloudflare-dyndns` binary.
+1. edit `systemd/cloudflare-dyndns.service` to point to your `cloudflare-dyndns` binary.
+
+2. copy `systemd/cloudflare-dyndns.config.example` to `systemd/cloudflare-dyndns.config` and update as appropriate
 
 2. `make install-systemd`
 

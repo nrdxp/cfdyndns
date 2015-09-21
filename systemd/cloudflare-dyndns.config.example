@@ -1,3 +1,3 @@
-cloudflare_email=cole.mickens@gmail.com
-cloudflare_apikey=
-cloudflare_records="*.mickens.xxx,mickens.xxx,*.mickens.io,mickens.io,recessionomics.us,www.recessionomics.us,*.mickens.me,mickens.me,*.mickens.tv,mickens.tv,*.mickens.us,mickens.us,cole.mickens.us"
+CLOUDFLARE_EMAIL=cole.mickens@gmail.com
+CLOUDFLARE_APIKEY=
+CLOUDFLARE_RECORDS="*.mickens.xxx,mickens.xxx,*.mickens.io,mickens.io,recessionomics.us,www.recessionomics.us,*.mickens.me,mickens.me,*.mickens.tv,mickens.tv,*.mickens.us,mickens.us,cole.mickens.us"
