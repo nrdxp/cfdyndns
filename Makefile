@@ -1,5 +1,3 @@
-APIKEY:=`cat apikey.md`
-
 build:
 	cargo build
 
