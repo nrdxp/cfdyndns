@@ -1,6 +1,6 @@
 [root]
-name = "cloudflare-dyndns"
-version = "0.1.0"
+name = "cfdyndns"
+version = "0.0.1"
 dependencies = [
  "env_logger 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -1,6 +1,6 @@
 [package]
-name = "cloudflare-dyndns"
-version = "0.1.0"
+name = "cfdyndns"
+version = "0.0.1"
 authors = ["Cole Mickens <cole.mickens@gmail.com>"]
 
 [dependencies]
