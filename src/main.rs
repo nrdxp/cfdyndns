@@ -17,7 +17,7 @@ use trust_dns::rr::dns_class::DNSClass;
 use trust_dns::rr::record_type::RecordType;
 use trust_dns::rr::domain;
 use trust_dns::rr::record_data::RData;
-use trust_dns::udp::client::Client as DnsClient;
+use trust_dns::udp::Client as DnsClient;
 
 header! { (XAuthKey, "X-Auth-Key") => [String] }
 header! { (XAuthEmail, "X-Auth-Email") => [String] }
@@ -91,6 +91,7 @@ fn get_current_ip() -> Result<String, ()> {
 
 fn main() {
     let current_ip = get_current_ip().ok().expect("must have current ip");
+    println!("{}", current_ip);
     let client = Client::new();
     let cloudflare_records_env = env::var("CLOUDFLARE_RECORDS").ok().expect("missing records");
     let cloudflare_records: Vec<&str> = cloudflare_records_env.split(|c: char| c == ',').collect();

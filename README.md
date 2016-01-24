@@ -1,4 +1,6 @@
-# cloudflare-dyndns-rust
+# cfdyndns
+
+`CloudFlare Dynamic DNS Client`
 
 Reimplementation of [cloudflare-dyndns](https://github.com/colemickens/cloudflare-dyndns) in [Rust](https://www.rust-lang.org).
 
