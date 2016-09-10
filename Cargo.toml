@@ -4,8 +4,8 @@ version = "0.0.1"
 authors = ["Cole Mickens <cole.mickens@gmail.com>"]
 
 [dependencies]
-env_logger = "0.3.2"
-hyper = "0.7.2"
-serde = "0.6.11"
-serde_json = "0.6.0"
-trust-dns = "0.4.0"
+env_logger = "^0.3"
+hyper = "^0.9"
+serde = "^0.8"
+serde_json = "^0.8"
+trust-dns = "^0.7"
