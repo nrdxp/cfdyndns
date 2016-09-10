@@ -1,4 +1,4 @@
-#[macro_use] 
+#[macro_use]
 extern crate hyper;
 extern crate serde;
 extern crate serde_json;
@@ -13,22 +13,27 @@ use std::env;
 use std::io;
 use std::io::prelude::*;
 
+use trust_dns::client::Client as DnsClient;
 use trust_dns::rr::dns_class::DNSClass;
 use trust_dns::rr::record_type::RecordType;
 use trust_dns::rr::domain;
 use trust_dns::rr::record_data::RData;
-use trust_dns::udp::Client as DnsClient;
+use trust_dns::udp::UdpClientConnection;
 
 header! { (XAuthKey, "X-Auth-Key") => [String] }
 header! { (XAuthEmail, "X-Auth-Email") => [String] }
 
-// TODO(colemickens): none of the implementations handle paging properly
-const NS1_GOOGLE_COM_IP_ADDR: &'static str = "216.239.32.10";
+const NS1_GOOGLE_COM_IP_ADDR: &'static str = "216.239.32.10:53";
+
+fn env_var(n: &str) -> String {
+    let err = format!("Environment Variable '{}' must be set!", &n);
+    env::var(n).ok().expect(&err)
+}
 
 // overloaded function. no body is treated as a get, body is treated as a put
 fn cloudflare_api(client: &hyper::client::Client, url: &str, body: Option<&str>) -> Result<Value, String> {
-    let cloudflare_apikey = env::var("CLOUDFLARE_APIKEY").ok().expect("missing apikey");
-    let cloudflare_email = env::var("CLOUDFLARE_EMAIL").ok().expect("missing email");
+    let cloudflare_apikey = env_var("CLOUDFLARE_APIKEY");
+    let cloudflare_email = env_var("CLOUDFLARE_EMAIL");
 
     let builder = match body {
         Some(body) => { client.put(url).body(body) }
@@ -52,7 +57,7 @@ fn cloudflare_api(client: &hyper::client::Client, url: &str, body: Option<&str>)
     let success = response_json
         .as_object().unwrap()
         .get("success").unwrap()
-        .as_boolean().unwrap();
+        .as_bool().unwrap();
     if !success {
         println!("response status={}, but cloudflare success={}", response.status, success);
     }
@@ -61,44 +66,38 @@ fn cloudflare_api(client: &hyper::client::Client, url: &str, body: Option<&str>)
 }
 
 fn get_current_ip() -> Result<String, ()> {
-    let client = DnsClient::new((NS1_GOOGLE_COM_IP_ADDR).parse().unwrap()).unwrap();
+    let gdns_addr = (NS1_GOOGLE_COM_IP_ADDR).parse().expect("Couldn't get Google DNS Socket Addr");
+    let conn = UdpClientConnection::new(gdns_addr).expect("Couldn't open DNS UDP Connection");
+    let client = DnsClient::new(conn);
 
-    let name = domain::Name::with_labels(vec![
-        "o-o".to_string(),
-        "myaddr".to_string(),
-        "l".to_string(),
-        "google".to_string(),
-        "com".to_string()]);
-    let response = client.query(name.clone(), DNSClass::IN, RecordType::TXT).unwrap();
-    
-    /*
-    for answer in response.get_answers() {
-        if let &RData::TXT{ ref txt_data } = answer.get_rdata() {
-            for txtdatav in txt_data {
-                println!("{}", txtdatav);
-            }
-        }
-    }
-    */
+    let name = domain::Name::new();
+    let name = name.label("o-o")
+        .label("myaddr")
+        .label("l")
+        .label("google")
+        .label("com");
+    let response = client.query(&name, DNSClass::IN, RecordType::TXT).unwrap();
 
     let record = &response.get_answers()[0];
-    if let &RData::TXT{ ref txt_data } = record.get_rdata() {
-        return Ok(txt_data[0].to_string());
-    } else {
-        return Err(())
+    match record.get_rdata() {
+        &RData::TXT(ref txt) => {
+            let val = txt.get_txt_data();
+            return Ok(val[0].clone())
+        },
+        _ => return Err(())
     }
 }
 
 fn main() {
-    let current_ip = get_current_ip().ok().expect("must have current ip");
+    let current_ip = get_current_ip().ok().expect("Was unable to determine current IP address.");
     println!("{}", current_ip);
     let client = Client::new();
-    let cloudflare_records_env = env::var("CLOUDFLARE_RECORDS").ok().expect("missing records");
+    let cloudflare_records_env = env_var("CLOUDFLARE_RECORDS");
     let cloudflare_records: Vec<&str> = cloudflare_records_env.split(|c: char| c == ',').collect();
 
     let zones_url = "https://api.cloudflare.com/client/v4/zones";
     let zones_json = cloudflare_api(&client, zones_url, None).unwrap();
-  
+
     let zone_ids = zones_json
         .as_object().unwrap()
         .get("result").unwrap()
@@ -106,7 +105,7 @@ fn main() {
         .iter()
         .map(|ref zone_node|
             zone_node.find("id").unwrap()
-            .as_string().unwrap());
+            .as_str().unwrap());
 
     for zone_id in zone_ids {
         let records_url = format!("https://api.cloudflare.com/client/v4/zones/{}/dns_records", zone_id);
@@ -119,35 +118,35 @@ fn main() {
             .iter();
 
         for record in records {
-            let record_id = record.find("id").unwrap().as_string().unwrap();
-            let record_type = record.find("type").unwrap().as_string().unwrap();
-            let record_name = record.find("name").unwrap().as_string().unwrap();
-            let record_content = record.find("content").unwrap().as_string().unwrap();
-            
+            let record_id = record.find("id").unwrap().as_str().unwrap();
+            let record_type = record.find("type").unwrap().as_str().unwrap();
+            let record_name = record.find("name").unwrap().as_str().unwrap();
+            let record_content = record.find("content").unwrap().as_str().unwrap();
+
+            if !cloudflare_records.contains(&record_name) || record_type != "A" {
+                continue
+            }
+
             if record_content == current_ip
             {
                 println!("{} skipped, up to date", record_name);
                 continue;
             }
-            
-            if record_type == "A" && cloudflare_records.contains(&record_name) {
-                print!("{} ({} -> {})... ", record_name, record_content, current_ip);
-                io::stdout().flush().ok();
-                
-                let record_url = format!(
-                    "https://api.cloudflare.com/client/v4/zones/{}/dns_records/{}",
-                    zone_id,
-                    record_id);
-                let record_update_body = format!(
-                    r#"{{ "id": "{}", "name": "{}", "content": "{}", "type": "{}" }}"#,
-                    record_id,
-                    record_name,
-                    current_ip,
-                    record_type);
-                cloudflare_api(&client, &*record_url, Some(&*record_update_body)).unwrap();
-                
-                println!("done")
-            }
+
+            print!("{} ({} -> {})... ", record_name, record_content, current_ip);
+            io::stdout().flush().ok();
+
+            let record_url = format!(
+                "https://api.cloudflare.com/client/v4/zones/{}/dns_records/{}",
+                zone_id,
+                record_id);
+            let record_update_body = format!(
+                r#"{{ "id": "{}", "name": "{}", "content": "{}", "type": "{}" }}"#,
+                record_id,
+                record_name,
+                current_ip,
+                record_type);
+            cloudflare_api(&client, &*record_url, Some(&*record_update_body)).unwrap();
         }
     }
 }
