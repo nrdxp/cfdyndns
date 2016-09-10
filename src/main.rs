@@ -1,11 +1,15 @@
-#[macro_use]
-extern crate hyper;
+extern crate env_logger;
+#[macro_use] extern crate hyper;
+#[macro_use] extern crate log;
 extern crate serde;
 extern crate serde_json;
 extern crate trust_dns;
 
 use hyper::Client;
 use hyper::header::Connection;
+
+use log::{LogLevelFilter};
+use env_logger::LogBuilder;
 
 use serde_json::value::*;
 
@@ -59,7 +63,7 @@ fn cloudflare_api(client: &hyper::client::Client, url: &str, body: Option<&str>)
         .get("success").unwrap()
         .as_bool().unwrap();
     if !success {
-        println!("response status={}, but cloudflare success={}", response.status, success);
+        info!("response status={}, but cloudflare success={}", response.status, success);
     }
 
     Ok(response_json)
@@ -88,9 +92,21 @@ fn get_current_ip() -> Result<String, ()> {
     }
 }
 
+fn init() {
+    let mut builder = LogBuilder::new();
+    builder.filter(None, LogLevelFilter::Info);
+
+    if env::var("RUST_LOG").is_ok() {
+       builder.parse(&env::var("RUST_LOG").unwrap());
+    }
+
+    builder.init().unwrap();
+}
+
 fn main() {
+    init();
     let current_ip = get_current_ip().ok().expect("Was unable to determine current IP address.");
-    println!("{}", current_ip);
+    info!("{}", current_ip);
     let client = Client::new();
     let cloudflare_records_env = env_var("CLOUDFLARE_RECORDS");
     let cloudflare_records: Vec<&str> = cloudflare_records_env.split(|c: char| c == ',').collect();
@@ -129,7 +145,7 @@ fn main() {
 
             if record_content == current_ip
             {
-                println!("{} skipped, up to date", record_name);
+                info!("{} skipped, up to date", record_name);
                 continue;
             }
 
