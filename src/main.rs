@@ -17,7 +17,7 @@ use std::env;
 use std::io;
 use std::io::prelude::*;
 
-use trust_dns::client::Client as DnsClient;
+use trust_dns::client::{SyncClient as DnsClient, Client as _Client};
 use trust_dns::rr::dns_class::DNSClass;
 use trust_dns::rr::record_type::RecordType;
 use trust_dns::rr::domain;
@@ -75,18 +75,18 @@ fn get_current_ip() -> Result<String, ()> {
     let client = DnsClient::new(conn);
 
     let name = domain::Name::new();
-    let name = name.label("o-o")
-        .label("myaddr")
-        .label("l")
-        .label("google")
-        .label("com");
+    let name = name.append_label("o-o")
+        .append_label("myaddr")
+        .append_label("l")
+        .append_label("google")
+        .append_label("com");
     let response = client.query(&name, DNSClass::IN, RecordType::TXT).unwrap();
 
-    let record = &response.get_answers()[0];
-    match record.get_rdata() {
+    let record = &response.answers()[0];
+    match record.rdata() {
         &RData::TXT(ref txt) => {
-            let val = txt.get_txt_data();
-            return Ok(val[0].clone())
+            let val = txt.txt_data();
+            return Ok(String::from_utf8(val[0].clone().into()).unwrap())
         },
         _ => return Err(())
     }
