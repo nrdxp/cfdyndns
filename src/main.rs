@@ -5,8 +5,13 @@ extern crate serde;
 extern crate serde_json;
 extern crate trust_dns;
 
+extern crate hyper_native_tls;
+
 use hyper::Client;
+use hyper::net::HttpsConnector;
 use hyper::header::Connection;
+
+use hyper_native_tls::NativeTlsClient;
 
 use log::{LogLevelFilter};
 use env_logger::LogBuilder;
@@ -107,7 +112,11 @@ fn main() {
     init();
     let current_ip = get_current_ip().ok().expect("Was unable to determine current IP address.");
     info!("{}", current_ip);
-    let client = Client::new();
+
+    let ssl = NativeTlsClient::new().unwrap();
+    let connector = HttpsConnector::new(ssl);
+    let mut client = Client::with_connector(connector);
+
     let cloudflare_records_env = env_var("CLOUDFLARE_RECORDS");
     let cloudflare_records: Vec<&str> = cloudflare_records_env.split(|c: char| c == ',').collect();
 

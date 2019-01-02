@@ -6,6 +6,7 @@ authors = ["Cole Mickens <cole.mickens@gmail.com>"]
 [dependencies]
 env_logger = "^0.3"
 hyper = "^0.10"
+hyper-native-tls = "0.2.2"
 log = "^0.3"
 serde = "^0.8"
 serde_json = "^0.8"
