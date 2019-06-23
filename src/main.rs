@@ -131,7 +131,7 @@ fn main() {
                 zone_id,
                 record_id);
             let record_update_body = format!(
-                r#"{{"name": "{}", "content": "{}", "type": "{}"}}"#,
+                r#"{{"name": "{}", "content": "{}", "type": "{}", "proxied": true}}"#,
                 record_name,
                 current_ip,
                 record_type);
