@@ -28,11 +28,10 @@ fn env_var(n: &str) -> String {
 }
 
 // overloaded function. no body is treated as a get, body is treated as a put
-fn cloudflare_api(url: &str, body: Option<String>) -> Result<Value, String> {
+fn cloudflare_api(client: &reqwest::Client, url: &str, body: Option<String>) -> Result<Value, String> {
     let cloudflare_apikey = env_var("CLOUDFLARE_APIKEY");
     let cloudflare_email = env_var("CLOUDFLARE_EMAIL");
 
-    let client = reqwest::Client::new();
     let request = match body {
         Some(body) => { client.put(url).body(body) }
         None => { client.get(url) }
@@ -82,12 +81,13 @@ fn main() {
 
     let current_ip = get_current_ip().ok().expect("Was unable to determine current IP address.");
     info!("{}", current_ip);
+    let client = reqwest::Client::new();
 
     let cloudflare_records_env = env_var("CLOUDFLARE_RECORDS");
     let cloudflare_records: Vec<&str> = cloudflare_records_env.split(|c: char| c == ',').collect();
 
     let zones_url = "https://api.cloudflare.com/client/v4/zones";
-    let zones_json = cloudflare_api(zones_url, None).unwrap();
+    let zones_json = cloudflare_api(&client, zones_url, None).unwrap();
 
     let zone_ids = zones_json
         .as_object().unwrap()
@@ -100,7 +100,7 @@ fn main() {
 
     for zone_id in zone_ids {
         let records_url = format!("https://api.cloudflare.com/client/v4/zones/{}/dns_records", zone_id);
-        let records_json = cloudflare_api(&*records_url, None).unwrap();
+        let records_json = cloudflare_api(&client, &*records_url, None).unwrap();
 
         let records = records_json
             .as_object().unwrap()
@@ -135,7 +135,7 @@ fn main() {
                 record_name,
                 current_ip,
                 record_type);
-            cloudflare_api(&*record_url, Some(record_update_body.to_string())).unwrap();
+            cloudflare_api(&client, &*record_url, Some(record_update_body.to_string())).unwrap();
         }
     }
 }
