@@ -2,11 +2,12 @@
 name = "cfdyndns"
 version = "0.0.1"
 authors = ["Cole Mickens <cole.mickens@gmail.com>"]
+edition = "2018"
 
 [dependencies]
-env_logger = "^0.3"
-hyper = "^0.9"
-log = "^0.3"
-serde = "^0.8"
-serde_json = "^0.8"
-trust-dns = "^0.7"
+log = "*"
+pretty_env_logger = "*"
+reqwest = "*"
+serde = "*"
+serde_json = "*"
+trust-dns = "*"
