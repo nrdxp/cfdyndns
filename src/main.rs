@@ -3,7 +3,7 @@ extern crate pretty_env_logger;
 extern crate reqwest;
 extern crate serde;
 extern crate serde_json;
-extern crate trust_dns;
+extern crate trust_dns_client;
 
 use log::info;
 
@@ -13,12 +13,12 @@ use std::env;
 use std::io;
 use std::io::prelude::*;
 
-use trust_dns::client::{Client as _Client, SyncClient};
-use trust_dns::rr::dns_class::DNSClass;
-use trust_dns::rr::domain;
-use trust_dns::rr::record_data::RData;
-use trust_dns::rr::record_type::RecordType;
-use trust_dns::udp::UdpClientConnection;
+use trust_dns_client::client::{Client as _Client, SyncClient};
+use trust_dns_client::rr::dns_class::DNSClass;
+use trust_dns_client::rr::domain;
+use trust_dns_client::rr::record_data::RData;
+use trust_dns_client::rr::record_type::RecordType;
+use trust_dns_client::udp::UdpClientConnection;
 
 const NS1_GOOGLE_COM_IP_ADDR: &'static str = "216.239.32.10:53";
 
@@ -29,7 +29,7 @@ fn env_var(n: &str) -> String {
 
 // overloaded function. no body is treated as a get, body is treated as a put
 fn cloudflare_api(
-    client: &reqwest::Client,
+    client: &reqwest::blocking::Client,
     url: &str,
     body: Option<String>,
 ) -> Result<Value, String> {
@@ -100,7 +100,7 @@ fn main() {
         .ok()
         .expect("Was unable to determine current IP address.");
     info!("{}", current_ip);
-    let client = reqwest::Client::new();
+    let client = reqwest::blocking::Client::new();
 
     let cloudflare_records_env = env_var("CLOUDFLARE_RECORDS");
     let cloudflare_records: Vec<&str> = cloudflare_records_env.split(|c: char| c == ',').collect();
