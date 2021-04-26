@@ -23,7 +23,7 @@ use trust_dns_client::udp::UdpClientConnection;
 const NS1_GOOGLE_COM_IP_ADDR: &'static str = "216.239.32.10:53";
 
 fn env_var(n: &str) -> String {
-    let err = format!("Environment Variable '{}' must be set!", &n);
+    let err = "Environment Variables CLOUDFLARE_RECORDS and either CLOUDFLARE_APITOKEN or CLOUDFLARE_EMAIL and CLOUDFLARE_APIKEY must be set!";
     env::var(n).ok().expect(&err)
 }
 
@@ -33,16 +33,28 @@ fn cloudflare_api(
     url: &str,
     body: Option<String>,
 ) -> Result<Value, String> {
-    let cloudflare_apikey = env_var("CLOUDFLARE_APIKEY");
-    let cloudflare_email = env_var("CLOUDFLARE_EMAIL");
 
     let request = match body {
         Some(body) => client.put(url).body(body),
         None => client.get(url),
     };
-    let response_json: Value = request
-        .header("X-Auth-Key", cloudflare_apikey.to_owned())
-        .header("X-Auth-Email", cloudflare_email.to_owned())
+
+    let authorized_request = match env::var("CLOUDFLARE_APITOKEN") {
+        Ok(val) => {
+            let mut bearer = "Bearer ".to_owned();
+            bearer.push_str(&val);
+            request.header("Authorization", bearer.to_owned())
+        }
+        Err(_e) =>  {
+            let cloudflare_apikey = env_var("CLOUDFLARE_APIKEY");
+            let cloudflare_email = env_var("CLOUDFLARE_EMAIL");
+            request
+                .header("X-Auth-Key", cloudflare_apikey.to_owned())
+                .header("X-Auth-Email", cloudflare_email.to_owned())
+        }
+    };
+
+    let response_json: Value = authorized_request
         .send()
         .unwrap()
         .json()
