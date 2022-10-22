@@ -4,11 +4,11 @@
 
 Reimplementation of [cloudflare-dyndns](https://github.com/colemickens/cloudflare-dyndns) in [Rust](https://www.rust-lang.org).
 
-Builds with `rust 1.3.0 stable`, possibly `rust 1.2.0` as well.
+Builds with Rust 1.56.0.
 
 ## building
 
-1. install `make` and `rust 1.3.0`.
+1. install `make` and `rustup`.
 
 2. clone this repo
 
