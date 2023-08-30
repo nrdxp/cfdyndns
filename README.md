@@ -4,25 +4,35 @@
 
 Reimplementation of [cloudflare-dyndns](https://github.com/colemickens/cloudflare-dyndns) in [Rust](https://www.rust-lang.org).
 
-Builds with `rust 1.3.0 stable`, possibly `rust 1.2.0` as well.
+## status known issues
+
+* this is barely in maintenance mode, it seems to have been broken at times without many folks noticing, myself included
+* paging is not implemented
+* some basic CI should be added, since I haven't officially abandoned this (yet)
+* I'm wary of Cloudflare these days, YMMV
 
 ## building
 
-1. install `make` and `rust 1.3.0`.
+* use cargo
 
-2. clone this repo
+## usage
 
-3. (debug build) `make build`
+* simple test CLI usage
 
-4. (release build) `make build-release`
+```shell
+[cole@zeph:~/code/cfdyndns]$ env | grep CLOUDFLARE                                                                                                           
+                                                                                                                                                             
+[cole@zeph:~/code/cfdyndns]$ export CLOUDFLARE_RECORDS=test-cfdyndns.mickens.us                                                                              
+                                                                                                                                                             
+[cole@zeph:~/code/cfdyndns]$ export CLOUDFLARE_APITOKEN="m1D9WwLDE6lz2hYpU_5MtkpzBpFvEYS3ZuOGB2Va"                                                           
+                                                                                                                                                             
+[cole@zeph:~/code/cfdyndns]$ cargo run                                                                                                                       
+    Finished dev [unoptimized + debuginfo] target(s) in 0.06s                                                                                                
+     Running `target/debug/cfdyndns`                                                                                                                         
+test-cfdyndns.mickens.us (1.2.3.4 -> 72.209.157.122)...   
+```
 
-## running
-
-1. (debug build) `make run`
-
-2. (release build) `make run-release`
-
-## installing as systemd service
+### installing as systemd service
 
 1. edit `systemd/cloudflare-dyndns.service` to point to your `cloudflare-dyndns` binary.
 
@@ -30,11 +40,11 @@ Builds with `rust 1.3.0 stable`, possibly `rust 1.2.0` as well.
 
 2. `make install-systemd`
 
-## uninstalling systemd service
+### uninstalling systemd service
 
 1. `make uninstall-systemd`
 
-## example systemd journalctl log
+### example systemd journalctl log
 
 ```
 Sep 20 15:36:40 chimera systemd[1]: Started Cloudflare-dyndns.
