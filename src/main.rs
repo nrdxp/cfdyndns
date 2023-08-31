@@ -149,6 +149,8 @@ fn main() {
 			let record_name = record.get("name").unwrap().as_str().unwrap();
 			let record_content =
 				record.get("content").unwrap().as_str().unwrap();
+			let record_proxied =
+				record.get("proxied").unwrap().as_bool().unwrap();
 
 			if !cloudflare_records.contains(&record_name) || record_type != "A"
 			{
@@ -171,8 +173,8 @@ fn main() {
 				zone_id, record_id
 			);
 			let record_update_body = format!(
-				r#"{{"name": "{}", "content": "{}", "type": "{}", "proxied": true}}"#,
-				record_name, current_ip, record_type
+				r#"{{"name": "{}", "content": "{}", "type": "{}", "proxied": {}}}"#,
+				record_name, current_ip, record_type, record_proxied
 			);
 			cloudflare_api(
 				&client,
