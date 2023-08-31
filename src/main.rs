@@ -20,11 +20,11 @@ use trust_dns_client::rr::record_data::RData;
 use trust_dns_client::rr::record_type::RecordType;
 use trust_dns_client::udp::UdpClientConnection;
 
-const NS1_GOOGLE_COM_IP_ADDR: &'static str = "216.239.32.10:53";
+const NS1_GOOGLE_COM_IP_ADDR: &str = "216.239.32.10:53";
 
 fn env_var(n: &str) -> String {
 	let err = "Environment Variables CLOUDFLARE_RECORDS and either CLOUDFLARE_APITOKEN or CLOUDFLARE_EMAIL and CLOUDFLARE_APIKEY must be set!";
-	env::var(n).ok().expect(&err)
+	env::var(n).expect(err)
 }
 
 // overloaded function. no body is treated as a get, body is treated as a put
@@ -94,20 +94,19 @@ fn get_current_ip() -> Result<String, ()> {
 
 	let record = &response.answers()[0];
 	match record.rdata() {
-		&RData::TXT(ref txt) => {
+		RData::TXT(txt) => {
 			let val = txt.txt_data();
-			return Ok(String::from_utf8(val[0].to_vec()).unwrap());
+			Ok(String::from_utf8(val[0].to_vec()).unwrap())
 		}
-		_ => return Err(()),
+		_ => Err(()),
 	}
 }
 
 fn main() {
 	pretty_env_logger::init();
 
-	let current_ip = get_current_ip()
-		.ok()
-		.expect("Was unable to determine current IP address.");
+	let current_ip =
+		get_current_ip().expect("Was unable to determine current IP address.");
 	info!("{}", current_ip);
 	let client = reqwest::blocking::Client::new();
 
@@ -126,15 +125,14 @@ fn main() {
 		.as_array()
 		.unwrap()
 		.iter()
-		.map(|ref zone_node| zone_node.get("id").unwrap().as_str().unwrap());
+		.map(|zone_node| zone_node.get("id").unwrap().as_str().unwrap());
 
 	for zone_id in zone_ids {
 		let records_url = format!(
 			"https://api.cloudflare.com/client/v4/zones/{}/dns_records",
 			zone_id
 		);
-		let records_json =
-			cloudflare_api(&client, &*records_url, None).unwrap();
+		let records_json = cloudflare_api(&client, &records_url, None).unwrap();
 
 		let records = records_json
 			.as_object()
@@ -178,7 +176,7 @@ fn main() {
 			);
 			cloudflare_api(
 				&client,
-				&*record_url,
+				&record_url,
 				Some(record_update_body.to_string()),
 			)
 			.unwrap();
