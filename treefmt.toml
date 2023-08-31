@@ -1,0 +1,21 @@
+# One CLI to format the code tree - https://github.com/numtide/treefmt
+[formatter.nix]
+command = "alejandra"
+includes = ["*.nix"]
+
+[formatter.shell]
+command = "shfmt"
+options = [
+  "-i",
+  "2", # indent 2
+  "-s", # simplify the code
+  "-w", # write back to the file
+
+]
+includes = ["*.sh"]
+excludes = []
+
+[formatter.rust]
+command = "rustfmt"
+includes = ["*.rs"]
+excludes = []
