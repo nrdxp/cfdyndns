@@ -1,10 +1,3 @@
-extern crate log;
-extern crate pretty_env_logger;
-extern crate reqwest;
-extern crate serde;
-extern crate serde_json;
-extern crate trust_dns_client;
-
 use log::info;
 
 use serde_json::value::*;
@@ -13,14 +6,7 @@ use std::env;
 use std::io;
 use std::io::prelude::*;
 
-use trust_dns_client::client::{Client as _Client, SyncClient};
-use trust_dns_client::rr::dns_class::DNSClass;
-use trust_dns_client::rr::domain;
-use trust_dns_client::rr::record_data::RData;
-use trust_dns_client::rr::record_type::RecordType;
-use trust_dns_client::udp::UdpClientConnection;
-
-const NS1_GOOGLE_COM_IP_ADDR: &str = "216.239.32.10:53";
+use public_ip::{http, Version};
 
 fn env_var(n: &str) -> String {
 	let err = "Environment Variables CLOUDFLARE_RECORDS and either CLOUDFLARE_APITOKEN or CLOUDFLARE_EMAIL and CLOUDFLARE_APIKEY must be set!";
@@ -70,44 +56,14 @@ fn cloudflare_api(
 	Ok(response_json)
 }
 
-fn get_current_ip() -> Result<String, ()> {
-	let gdns_addr = (NS1_GOOGLE_COM_IP_ADDR)
-		.parse()
-		.expect("Couldn't get Google DNS Socket Addr");
-	let conn = UdpClientConnection::new(gdns_addr)
-		.expect("Couldn't open DNS UDP Connection");
-	let client = SyncClient::new(conn);
-
-	let name = domain::Name::new();
-	let name = name
-		.append_label("o-o")
-		.unwrap()
-		.append_label("myaddr")
-		.unwrap()
-		.append_label("l")
-		.unwrap()
-		.append_label("google")
-		.unwrap()
-		.append_label("com")
-		.unwrap();
-	let response = client.query(&name, DNSClass::IN, RecordType::TXT).unwrap();
-
-	let record = &response.answers()[0];
-	match record.rdata() {
-		RData::TXT(txt) => {
-			let val = txt.txt_data();
-			Ok(String::from_utf8(val[0].to_vec()).unwrap())
-		}
-		_ => Err(()),
-	}
-}
-
-fn main() {
+#[tokio::main]
+async fn main() {
 	pretty_env_logger::init();
 
-	let current_ip =
-		get_current_ip().expect("Was unable to determine current IP address.");
-	info!("{}", current_ip);
+	let current_ipv4 = public_ip::addr_with(http::ALL, Version::V4)
+		.await
+		.expect("Was unable to determine current IP address.");
+	info!("{}", current_ipv4);
 	let client = reqwest::blocking::Client::new();
 
 	let cloudflare_records_env = env_var("CLOUDFLARE_RECORDS");
@@ -157,14 +113,14 @@ fn main() {
 				continue;
 			}
 
-			if record_content == current_ip {
+			if record_content == current_ipv4.to_string() {
 				info!("{} skipped, up to date", record_name);
 				continue;
 			}
 
 			print!(
 				"{} ({} -> {})... ",
-				record_name, record_content, current_ip
+				record_name, record_content, current_ipv4
 			);
 			io::stdout().flush().ok();
 
@@ -174,7 +130,7 @@ fn main() {
 			);
 			let record_update_body = format!(
 				r#"{{"name": "{}", "content": "{}", "type": "{}", "proxied": {}}}"#,
-				record_name, current_ip, record_type, record_proxied
+				record_name, current_ipv4, record_type, record_proxied
 			);
 			cloudflare_api(
 				&client,
