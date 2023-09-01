@@ -1,143 +1,152 @@
 use log::info;
 
-use serde_json::value::*;
-
+use cloudflare::{
+	endpoints::{
+		dns::{
+			DnsContent, DnsRecord, ListDnsRecords, ListDnsRecordsParams,
+			UpdateDnsRecord, UpdateDnsRecordParams,
+		},
+		zone::{ListZones, ListZonesParams, Zone},
+	},
+	framework::{
+		async_api::{ApiClient, Client},
+		auth::Credentials,
+		Environment, HttpApiClientConfig,
+	},
+};
 use std::env;
 use std::io;
-use std::io::prelude::*;
+use std::io::prelude::Write;
+
+use std::net::IpAddr;
 
 use public_ip::{http, Version};
 
-fn env_var(n: &str) -> String {
-	let err = "Environment Variables CLOUDFLARE_RECORDS and either CLOUDFLARE_APITOKEN or CLOUDFLARE_EMAIL and CLOUDFLARE_APIKEY must be set!";
-	env::var(n).expect(err)
-}
-
-// overloaded function. no body is treated as a get, body is treated as a put
-fn cloudflare_api(
-	client: &reqwest::blocking::Client,
-	url: &str,
-	body: Option<String>,
-) -> Result<Value, String> {
-	let request = match body {
-		Some(body) => client.put(url).body(body),
-		None => client.get(url),
-	};
-
-	let authorized_request = match env::var("CLOUDFLARE_APITOKEN") {
-		Ok(val) => {
-			let mut bearer = "Bearer ".to_owned();
-			bearer.push_str(&val);
-			request.header("Authorization", bearer.to_owned())
-		}
-		Err(_e) => {
-			let cloudflare_apikey = env_var("CLOUDFLARE_APIKEY");
-			let cloudflare_email = env_var("CLOUDFLARE_EMAIL");
-			request
-				.header("X-Auth-Key", cloudflare_apikey.to_owned())
-				.header("X-Auth-Email", cloudflare_email.to_owned())
-		}
-	};
-
-	let response_json: Value =
-		authorized_request.send().unwrap().json().unwrap();
-
-	let success = response_json
-		.as_object()
-		.unwrap()
-		.get("success")
-		.unwrap()
-		.as_bool()
-		.unwrap();
-	if !success {
-		return Err(format!("Request not successful: {}", response_json));
-	}
-
-	Ok(response_json)
-}
+use anyhow::{Context, Result};
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
 	pretty_env_logger::init();
 
-	let current_ipv4 = public_ip::addr_with(http::ALL, Version::V4)
-		.await
-		.expect("Was unable to determine current IP address.");
-	info!("{}", current_ipv4);
-	let client = reqwest::blocking::Client::new();
+	let public_ipv4 = public_ip::addr_with(http::ALL, Version::V4).await;
+	let public_ipv6 = public_ip::addr_with(public_ip::ALL, Version::V6).await;
 
-	let cloudflare_records_env = env_var("CLOUDFLARE_RECORDS");
+	if (None, None) == (public_ipv6, public_ipv4) {
+		panic!("Could not determine your current public IP address.")
+	}
+
+	if let Some(ipv4) = public_ipv4 {
+		info!("{}", ipv4);
+	}
+	if let Some(ipv6) = public_ipv6 {
+		info!("{}", ipv6);
+	}
+
+	let cloudflare_records_env = env::var("CLOUDFLARE_RECORDS").context("")?;
 	let cloudflare_records: Vec<&str> =
 		cloudflare_records_env.split(|c: char| c == ',').collect();
 
-	let zones_url = "https://api.cloudflare.com/client/v4/zones";
-	let zones_json = cloudflare_api(&client, zones_url, None).unwrap();
+	let credentials: Credentials =
+		if let Ok(token) = env::var("CLOUDFLARE_APITOKEN") {
+			Credentials::UserAuthToken { token }
+		} else if let (Ok(key), Ok(email)) =
+			(env::var("CLOUDFLARE_APIKEY"), env::var("CLOUDFLARE_EMAIL"))
+		{
+			Credentials::UserAuthKey { email, key }
+		} else {
+			panic!("Either API token or API key + email pair must be provided")
+		};
 
-	let zone_ids = zones_json
-		.as_object()
-		.unwrap()
-		.get("result")
-		.unwrap()
-		.as_array()
-		.unwrap()
-		.iter()
-		.map(|zone_node| zone_node.get("id").unwrap().as_str().unwrap());
+	let api_client = Client::new(
+		credentials,
+		HttpApiClientConfig::default(),
+		Environment::Production,
+	)?;
 
-	for zone_id in zone_ids {
-		let records_url = format!(
-			"https://api.cloudflare.com/client/v4/zones/{}/dns_records",
-			zone_id
-		);
-		let records_json = cloudflare_api(&client, &records_url, None).unwrap();
+	let zones = api_client
+		.request(&ListZones {
+			params: ListZonesParams::default(),
+		})
+		.await?
+		.result;
 
-		let records = records_json
-			.as_object()
-			.unwrap()
-			.get("result")
-			.unwrap()
-			.as_array()
-			.unwrap()
-			.iter();
+	for zone in zones {
+		let records = api_client
+			.request(&ListDnsRecords {
+				zone_identifier: &zone.id,
+				params: ListDnsRecordsParams::default(),
+			})
+			.await?
+			.result;
 
 		for record in records {
-			let record_id = record.get("id").unwrap().as_str().unwrap();
-			let record_type = record.get("type").unwrap().as_str().unwrap();
-			let record_name = record.get("name").unwrap().as_str().unwrap();
-			let record_content =
-				record.get("content").unwrap().as_str().unwrap();
-			let record_proxied =
-				record.get("proxied").unwrap().as_bool().unwrap();
-
-			if !cloudflare_records.contains(&record_name) || record_type != "A"
-			{
+			if !cloudflare_records.contains(&record.name.as_str()) {
 				continue;
 			}
 
-			if record_content == current_ipv4.to_string() {
-				info!("{} skipped, up to date", record_name);
-				continue;
+			match record.content {
+				DnsContent::A { content: ipv4 } => match public_ipv4 {
+					Some(public) => {
+						update_record(
+							&record,
+							&IpAddr::V4(ipv4),
+							&public,
+							&api_client,
+							&zone,
+						)
+						.await?
+					}
+					None => continue,
+				},
+				DnsContent::AAAA { content: ipv6 } => match public_ipv6 {
+					Some(public) => {
+						update_record(
+							&record,
+							&IpAddr::V6(ipv6),
+							&public,
+							&api_client,
+							&zone,
+						)
+						.await?
+					}
+					None => continue,
+				},
+				_ => continue,
 			}
-
-			print!(
-				"{} ({} -> {})... ",
-				record_name, record_content, current_ipv4
-			);
-			io::stdout().flush().ok();
-
-			let record_url = format!(
-				"https://api.cloudflare.com/client/v4/zones/{}/dns_records/{}",
-				zone_id, record_id
-			);
-			let record_update_body = format!(
-				r#"{{"name": "{}", "content": "{}", "type": "{}", "proxied": {}}}"#,
-				record_name, current_ipv4, record_type, record_proxied
-			);
-			cloudflare_api(
-				&client,
-				&record_url,
-				Some(record_update_body.to_string()),
-			)
-			.unwrap();
 		}
 	}
+	Ok(())
+}
+
+async fn update_record(
+	record: &DnsRecord,
+	record_ip: &IpAddr,
+	public_ip: &IpAddr,
+	client: &Client,
+	zone: &Zone,
+) -> Result<()> {
+	if public_ip == record_ip {
+		info!("{} skipped, up to date", record.name);
+		return Ok(());
+	}
+
+	print!("{} ({} -> {})... ", record.name, record_ip, public_ip);
+	io::stdout().flush().ok();
+
+	client
+		.request(&UpdateDnsRecord {
+			zone_identifier: &zone.id,
+			identifier: &record.id,
+			params: UpdateDnsRecordParams {
+				name: &record.name,
+				ttl: record.ttl.into(),
+				proxied: record.proxied.into(),
+				content: match public_ip {
+					IpAddr::V4(ip) => DnsContent::A { content: *ip },
+					IpAddr::V6(ip) => DnsContent::AAAA { content: *ip },
+				},
+			},
+		})
+		.await?;
+	Ok(())
 }
