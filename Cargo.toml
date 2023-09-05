@@ -12,3 +12,7 @@ public-ip = "^0.2"
 tokio = { version = "^1", features = ["rt-multi-thread", "macros"] }
 cloudflare = "^0.10"
 anyhow = "^1"
+
+[patch.crates-io]
+cloudflare = { git = "https://github.com/jcgruenhage/cloudflare-rs.git", branch = "make-owner-fields-optional" }
+public-ip = { git = "https://github.com/jcgruenhage/rust-public-ip.git", branch = "cloudflare-provider" }
