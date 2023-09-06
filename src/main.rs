@@ -28,8 +28,10 @@ use anyhow::{Context, Result};
 async fn main() -> Result<()> {
 	pretty_env_logger::init();
 
-	let public_ipv4 = public_ip::addr_with(http::ALL, Version::V4).await;
-	let public_ipv6 = public_ip::addr_with(public_ip::ALL, Version::V6).await;
+	let (public_ipv4, public_ipv6) = tokio::join!(
+		public_ip::addr_with(http::ALL, Version::V4),
+		public_ip::addr_with(public_ip::ALL, Version::V6)
+	);
 
 	if (None, None) == (public_ipv6, public_ipv4) {
 		panic!("Could not determine your current public IP address.")
