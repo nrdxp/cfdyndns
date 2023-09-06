@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
 	);
 
 	if (None, None) == (public_ipv6, public_ipv4) {
-		panic!("Could not determine your current public IP address.")
+		anyhow::bail!("Could not determine your current public IP address.")
 	}
 
 	if let Some(ipv4) = public_ipv4 {
@@ -56,7 +56,9 @@ async fn main() -> Result<()> {
 		{
 			Credentials::UserAuthKey { email, key }
 		} else {
-			panic!("Either API token or API key + email pair must be provided")
+			anyhow::bail!(
+				"Either API token or API key + email pair must be provided"
+			)
 		};
 
 	let api_client = Client::new(
