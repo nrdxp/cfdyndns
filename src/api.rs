@@ -1,6 +1,7 @@
 use clap::Parser;
+use clap_verbosity_flag::{InfoLevel, Verbosity};
 
-#[derive(Parser)]
+#[derive(Debug, Parser)]
 #[clap(author, version, about)]
 pub struct Cli {
 	#[clap(
@@ -43,4 +44,7 @@ pub struct Cli {
 	)]
 	/// deprecated: The CloudFlare email to authenticate with, also requires API key
 	pub email: Option<String>,
+
+	#[clap(flatten)]
+	pub verbose: Verbosity<InfoLevel>,
 }

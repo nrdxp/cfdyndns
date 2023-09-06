@@ -189,6 +189,7 @@ version = "0.0.3"
 dependencies = [
  "anyhow",
  "clap",
+ "clap-verbosity-flag",
  "cloudflare",
  "log",
  "pretty_env_logger",
@@ -227,6 +228,16 @@ checksum = "6a13b88d2c62ff462f88e4a121f17a82c1af05693a2f192b5c38d14de73c19f6"
 dependencies = [
  "clap_builder",
  "clap_derive",
+]
+
+[[package]]
+name = "clap-verbosity-flag"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1eef05769009513df2eb1c3b4613e7fad873a14c600ff025b08f250f59fee7de"
+dependencies = [
+ "clap",
+ "log",
 ]
 
 [[package]]

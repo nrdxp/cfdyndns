@@ -28,9 +28,12 @@ use clap::Parser;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-	pretty_env_logger::init();
-
 	let cli = Cli::parse();
+
+	pretty_env_logger::formatted_builder()
+		.filter_level(cli.verbose.log_level_filter())
+		.init();
+
 	log::debug!("Rquested records to update: {:#?}", cli.records);
 
 	let (public_ipv4, public_ipv6) = tokio::join!(
