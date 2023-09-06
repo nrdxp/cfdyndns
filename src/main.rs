@@ -1,4 +1,4 @@
-use log::info;
+mod api;
 
 use cloudflare::{
 	endpoints::{
@@ -14,7 +14,6 @@ use cloudflare::{
 		Environment, HttpApiClientConfig,
 	},
 };
-use std::env;
 use std::io;
 use std::io::prelude::Write;
 
@@ -22,11 +21,17 @@ use std::net::IpAddr;
 
 use public_ip::{http, Version};
 
-use anyhow::{Context, Result};
+use anyhow::Result;
+
+use api::Cli;
+use clap::Parser;
 
 #[tokio::main]
 async fn main() -> Result<()> {
 	pretty_env_logger::init();
+
+	let cli = Cli::parse();
+	log::debug!("Rquested records to update: {:#?}", cli.records);
 
 	let (public_ipv4, public_ipv6) = tokio::join!(
 		public_ip::addr_with(http::ALL, Version::V4),
@@ -38,28 +43,19 @@ async fn main() -> Result<()> {
 	}
 
 	if let Some(ipv4) = public_ipv4 {
-		info!("{}", ipv4);
+		log::info!("{}", ipv4);
 	}
 	if let Some(ipv6) = public_ipv6 {
-		info!("{}", ipv6);
+		log::info!("{}", ipv6);
 	}
 
-	let cloudflare_records_env = env::var("CLOUDFLARE_RECORDS").context("")?;
-	let cloudflare_records: Vec<&str> =
-		cloudflare_records_env.split(|c: char| c == ',').collect();
-
-	let credentials: Credentials =
-		if let Ok(token) = env::var("CLOUDFLARE_APITOKEN") {
-			Credentials::UserAuthToken { token }
-		} else if let (Ok(key), Ok(email)) =
-			(env::var("CLOUDFLARE_APIKEY"), env::var("CLOUDFLARE_EMAIL"))
-		{
-			Credentials::UserAuthKey { email, key }
-		} else {
-			anyhow::bail!(
-				"Either API token or API key + email pair must be provided"
-			)
-		};
+	let credentials: Credentials = if let Some(token) = cli.token {
+		Credentials::UserAuthToken { token }
+	} else if let (Some(key), Some(email)) = (cli.key, cli.email) {
+		Credentials::UserAuthKey { email, key }
+	} else {
+		unreachable!()
+	};
 
 	let api_client = Client::new(
 		credentials,
@@ -84,7 +80,7 @@ async fn main() -> Result<()> {
 			.result;
 
 		for record in records {
-			if !cloudflare_records.contains(&record.name.as_str()) {
+			if !cli.records.contains(&record.name) {
 				continue;
 			}
 
@@ -130,7 +126,7 @@ async fn update_record(
 	zone: &Zone,
 ) -> Result<()> {
 	if public_ip == record_ip {
-		info!("{} skipped, up to date", record.name);
+		log::info!("{} skipped, up to date", record.name);
 		return Ok(());
 	}
 
