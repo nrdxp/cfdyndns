@@ -4,6 +4,7 @@ use clap_verbosity_flag::{InfoLevel, Verbosity};
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 pub struct Cli {
+	/// Comma separated DNS records to update with the host's public IP
 	#[clap(
 		long,
 		short,
@@ -11,8 +12,8 @@ pub struct Cli {
 		value_name = "RECORDS",
 		value_delimiter(',')
 	)]
-	/// Comma separated DNS records to update with the host's public IP
 	pub records: Vec<String>,
+	/// recommended: The CloudFlare API token to authenticate with
 	#[clap(
 		long,
 		short,
@@ -21,7 +22,7 @@ pub struct Cli {
 		value_name = "TOKEN",
 		required_unless_present_all(["key", "email"])
 	)]
-	/// recommended: The CloudFlare API token to authenticate with
+	/// deprecated: The CloudFlare API key to authenticate with, also requires email
 	pub token: Option<String>,
 	#[clap(
 		long,
@@ -32,7 +33,7 @@ pub struct Cli {
 		required_unless_present("token"),
 		requires("email")
 	)]
-	/// deprecated: The CloudFlare API key to authenticate with, also requires email
+	/// deprecated: The CloudFlare email to authenticate with, also requires API key
 	pub key: Option<String>,
 	#[clap(
 		long,
@@ -42,7 +43,6 @@ pub struct Cli {
 		required_unless_present("token"),
 		requires("key")
 	)]
-	/// deprecated: The CloudFlare email to authenticate with, also requires API key
 	pub email: Option<String>,
 
 	#[clap(flatten)]
