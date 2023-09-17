@@ -24,6 +24,8 @@ use std::sync::Arc;
 
 use crate::clone::Clone_;
 
+use std::collections::HashSet;
+
 pub async fn get_ips() -> Result<(Option<IpAddr>, Option<IpAddr>)> {
 	let (ipv4, ipv6) = tokio::join!(
 		public_ip::addr_with(http::ALL, Version::V4),
@@ -93,8 +95,24 @@ pub async fn get_records(
 		records.extend(handle.await??.result)
 	}
 
-	let locals = cli
-		.records
+	let mut start: HashSet<String> = cli.records.clone().into_iter().collect();
+	let mut invalid = vec![];
+	start.retain(|name| {
+		let mut res = false;
+		if let Ok(n) = addr::parse_domain_name(name) {
+			res = n.has_known_suffix();
+		}
+		if !res {
+			invalid.push(name.clone());
+		}
+		res
+	});
+
+	for name in invalid {
+		log::warn!("{} is an invalid domain name; skipping...", name);
+	}
+
+	let locals = start
 		.iter()
 		.map(|r| {
 			(
@@ -134,7 +152,11 @@ pub async fn update_record(
 	client: Arc<Client>,
 ) -> Result<()> {
 	if public_ip == record_ip {
-		log::info!("{} skipped, up to date", record.name);
+		let kind = match record_ip {
+			IpAddr::V4(_) => "A",
+			IpAddr::V6(_) => "AAAA",
+		};
+		log::info!("{} record {} skipped, up to date", kind, record.name);
 		return Ok(());
 	}
 

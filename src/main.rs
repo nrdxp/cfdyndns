@@ -24,8 +24,6 @@ async fn main() -> Result<()> {
 		.filter_level(cli.verbose.log_level_filter())
 		.init();
 
-	log::debug!("Rquested records to update: {:#?}", cli.records);
-
 	let (public_ipv4, public_ipv6) = fns::get_ips().await?;
 	let api_client = Arc::new(fns::get_client(&cli)?);
 	let records = fns::get_records(&cli, api_client.clone()).await?;
