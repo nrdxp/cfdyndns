@@ -1,6 +1,6 @@
 [package]
 name = "cfdyndns"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Cole Mickens <cole.mickens@gmail.com>", "Tim DeHerrera <tim@nrdxp.dev>"]
 edition = "2021"
 
