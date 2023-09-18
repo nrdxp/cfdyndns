@@ -5,9 +5,7 @@ mod ip;
 use anyhow::Result;
 use api::Cli;
 use clap::Parser;
-use cloudflare::endpoints::dns::{DnsContent, DnsRecord};
-use cloudflare::framework::async_api::ApiClient;
-use dns::Requests;
+use ip::DynDns;
 use std::sync::Arc;
 use tokio::task::JoinHandle;
 
@@ -27,70 +25,25 @@ async fn main() -> Result<()> {
 
 	for (name, id, a, aaaa) in records {
 		if let Some(id) = id {
-			if let Some(ip) = public_ipv4 {
-				let client = api_client.clone();
-				if let Some(a) = a {
-					match a.content {
-						DnsContent::A { content: _ } => {
-							handles.push(tokio::spawn(async move {
-								if let Some(req) = a.update_request(ip) {
-									client.request(&req).await?;
-								}
-								Ok(())
-							}));
-						}
-						_ => continue,
-					}
-				} else {
-					let name = name.clone();
-					let id = id.clone();
-					handles.push(tokio::spawn(async move {
-						client
-							.request(&DnsRecord::create_request(ip, &name, &id))
-							.await?;
-						Ok(())
-					}));
-				}
-			} else if let Some(a) = a {
-				let client = api_client.clone();
-				handles.push(tokio::spawn(async move {
-					client.request(&a.delete_request()).await?;
-					Ok(())
-				}))
+			if let Some(handle) = public_ipv4.update(
+				api_client.clone(),
+				a,
+				name.clone(),
+				id.clone(),
+			) {
+				handles.push(handle);
 			}
-			if let Some(ip) = public_ipv6 {
-				let client = api_client.clone();
-				if let Some(aaaa) = aaaa {
-					match aaaa.content {
-						DnsContent::AAAA { content: _ } => {
-							handles.push(tokio::spawn(async move {
-								if let Some(req) = aaaa.update_request(ip) {
-									client.request(&req).await?;
-								}
-								Ok(())
-							}));
-						}
-						_ => continue,
-					}
-				} else {
-					handles.push(tokio::spawn(async move {
-						client
-							.request(&DnsRecord::create_request(ip, &name, &id))
-							.await?;
-						Ok(())
-					}));
-				}
-			} else if let Some(aaaa) = aaaa {
-				let client = api_client.clone();
-				handles.push(tokio::spawn(async move {
-					client.request(&aaaa.delete_request()).await?;
-					Ok(())
-				}))
+			if let Some(handle) = public_ipv6.update(
+				api_client.clone(),
+				aaaa,
+				name.clone(),
+				id.clone(),
+			) {
+				handles.push(handle);
 			}
 		}
 	}
 
-	// await all results before handling errors
 	let mut results = vec![];
 	for handle in handles {
 		results.push(handle.await)

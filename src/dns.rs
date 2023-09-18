@@ -15,8 +15,8 @@ use std::collections::HashSet;
 use std::net::IpAddr;
 use std::sync::Arc;
 
-type Fqdn = String;
-type ZoneId = String;
+pub type Fqdn = String;
+pub type ZoneId = String;
 type Record = (Fqdn, Option<ZoneId>, Option<DnsRecord>, Option<DnsRecord>);
 
 pub trait Clone_ {
