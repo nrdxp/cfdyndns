@@ -72,19 +72,18 @@ pub async fn get_records(
 	let params = ListZones {
 		params: ListZonesParams::default(),
 	};
-	let zones = client.request(&params);
-	// HACK: make a second call since dns::Zone does not implement Clone upstream
-	let zones2 = client.request(&params).await?.result;
+	let zones = client.request(&params).await?.result;
 
-	let mut handles = Vec::with_capacity(zones2.len());
-	let mut records = Vec::with_capacity(zones2.len() * 10);
+	let mut handles = Vec::with_capacity(zones.len());
+	let mut records = Vec::with_capacity(zones.len() * 10);
 
-	for zone in zones.await?.result {
+	for zone in &zones {
 		let client = client.clone();
+		let zone_id = zone.id.to_string();
 		handles.push(tokio::spawn(async move {
 			client
 				.request(&ListDnsRecords {
-					zone_identifier: &zone.id,
+					zone_identifier: &zone_id,
 					params: ListDnsRecordsParams::default(),
 				})
 				.await
@@ -117,7 +116,7 @@ pub async fn get_records(
 		.map(|r| {
 			(
 				r.to_owned(),
-				zones2
+				zones
 					.iter()
 					.find(|z| r.contains(&z.name))
 					.map(|z| z.id.to_owned()),
