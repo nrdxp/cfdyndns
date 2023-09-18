@@ -1,20 +1,15 @@
 mod api;
-mod clone;
-mod fns;
-
-use cloudflare::endpoints::dns::{
-	CreateDnsRecord, CreateDnsRecordParams, DeleteDnsRecord, DnsContent,
-};
-
-use cloudflare::framework::async_api::ApiClient;
-use std::net::IpAddr;
+mod dns;
+mod ip;
 
 use anyhow::Result;
-
 use api::Cli;
 use clap::Parser;
-
+use cloudflare::endpoints::dns::{DnsContent, DnsRecord};
+use cloudflare::framework::async_api::ApiClient;
+use dns::Requests;
 use std::sync::Arc;
+use tokio::task::JoinHandle;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -24,119 +19,71 @@ async fn main() -> Result<()> {
 		.filter_level(cli.verbose.log_level_filter())
 		.init();
 
-	let (public_ipv4, public_ipv6) = fns::get_ips().await?;
-	let api_client = Arc::new(fns::get_client(&cli)?);
-	let records = fns::get_records(&cli, api_client.clone()).await?;
-	let mut handles = Vec::with_capacity(cli.records.len());
+	let (public_ipv4, public_ipv6) = ip::get_ips().await?;
+	let api_client = Arc::new(api::get_client(&cli)?);
+	let records = dns::get_records(&cli, api_client.clone()).await?;
+	let mut handles: Vec<JoinHandle<Result<()>>> =
+		Vec::with_capacity(cli.records.len());
 
-	for (record, zone, dns_v4, dns_v6) in records {
-		if let Some(zone) = zone {
+	for (name, id, a, aaaa) in records {
+		if let Some(id) = id {
 			if let Some(ip) = public_ipv4 {
 				let client = api_client.clone();
-				if let Some(dns) = dns_v4 {
-					match dns.content {
-						DnsContent::A { content: ipv4 } => {
+				if let Some(a) = a {
+					match a.content {
+						DnsContent::A { content: _ } => {
 							handles.push(tokio::spawn(async move {
-								fns::update_record(
-									dns,
-									IpAddr::V4(ipv4),
-									ip,
-									client,
-								)
-								.await
+								if let Some(req) = a.update_request(ip) {
+									client.request(&req).await?;
+								}
+								Ok(())
 							}));
 						}
 						_ => continue,
 					}
 				} else {
-					log::info!("{} → {}\n", record, ip);
-					let name = record.clone();
-					let id = zone.clone();
+					let name = name.clone();
+					let id = id.clone();
 					handles.push(tokio::spawn(async move {
 						client
-							.request(&CreateDnsRecord {
-								zone_identifier: &id,
-								params: CreateDnsRecordParams {
-									ttl: Some(1),
-									priority: None,
-									proxied: Some(false),
-									name: &name,
-									content: DnsContent::A {
-										content: match ip {
-											IpAddr::V4(ip) => ip,
-											_ => unreachable!(),
-										},
-									},
-								},
-							})
+							.request(&DnsRecord::create_request(ip, &name, &id))
 							.await?;
 						Ok(())
 					}));
 				}
-			} else if let Some(dns) = dns_v4 {
-				log::info!("deleting A record: {}\n", record);
+			} else if let Some(a) = a {
 				let client = api_client.clone();
-				let id = zone.clone();
 				handles.push(tokio::spawn(async move {
-					client
-						.request(&DeleteDnsRecord {
-							zone_identifier: &id,
-							identifier: &dns.id,
-						})
-						.await?;
+					client.request(&a.delete_request()).await?;
 					Ok(())
 				}))
 			}
 			if let Some(ip) = public_ipv6 {
 				let client = api_client.clone();
-				if let Some(dns) = dns_v6 {
-					match dns.content {
-						DnsContent::AAAA { content: ipv6 } => {
+				if let Some(aaaa) = aaaa {
+					match aaaa.content {
+						DnsContent::AAAA { content: _ } => {
 							handles.push(tokio::spawn(async move {
-								fns::update_record(
-									dns,
-									IpAddr::V6(ipv6),
-									ip,
-									client,
-								)
-								.await
+								if let Some(req) = aaaa.update_request(ip) {
+									client.request(&req).await?;
+								}
+								Ok(())
 							}));
 						}
 						_ => continue,
 					}
 				} else {
-					log::info!("{} → {}\n", record, ip);
 					handles.push(tokio::spawn(async move {
 						client
-							.request(&CreateDnsRecord {
-								zone_identifier: &zone,
-								params: CreateDnsRecordParams {
-									ttl: Some(1),
-									priority: None,
-									proxied: Some(false),
-									name: &record,
-									content: DnsContent::AAAA {
-										content: match ip {
-											IpAddr::V6(ip) => ip,
-											_ => unreachable!(),
-										},
-									},
-								},
-							})
+							.request(&DnsRecord::create_request(ip, &name, &id))
 							.await?;
 						Ok(())
 					}));
 				}
-			} else if let Some(dns) = dns_v6 {
-				log::info!("deleting AAAA record: {}\n", record);
+			} else if let Some(aaaa) = aaaa {
 				let client = api_client.clone();
 				handles.push(tokio::spawn(async move {
-					client
-						.request(&DeleteDnsRecord {
-							zone_identifier: &zone,
-							identifier: &dns.id,
-						})
-						.await?;
+					client.request(&aaaa.delete_request()).await?;
 					Ok(())
 				}))
 			}
