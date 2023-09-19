@@ -17,14 +17,18 @@
 
   inputs.nixpkgs.follows = "fenix/nixpkgs";
 
+  inputs.nosys.follows = "std/paisano/nosys";
+
   outputs = inputs @ {
     self,
     std,
+    nosys,
     ...
-  }:
+  }: let
+    systems = ["x86_64-linux"];
+  in
     std.growOn {
-      inherit inputs;
-      systems = ["x86_64-linux"];
+      inherit inputs systems;
       cellsFrom = ./nix;
       cellBlocks = with std.blockTypes; [
         (installables "packages" {ci.build = true;})
@@ -34,7 +38,11 @@
     } {
       devShells = std.harvest self ["repo" "shells"];
       packages = std.harvest self ["bin" "packages"];
-    };
+    }
+    (nosys (inputs // {inherit systems;}) ({self, ...}: {
+      packages.default = self.packages.cfdyndns;
+      devShells.default = self.devshells.dev;
+    }));
 
   nixConfig = {
     extra-substituters = [

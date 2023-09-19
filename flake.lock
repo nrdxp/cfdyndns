@@ -282,6 +282,11 @@
           "fenix",
           "nixpkgs"
         ],
+        "nosys": [
+          "std",
+          "paisano",
+          "nosys"
+        ],
         "std": "std"
       }
     },

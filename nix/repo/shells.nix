@@ -7,8 +7,7 @@
   inherit (inputs.cells) bin;
 
   l = nixpkgs.lib // builtins;
-in rec {
-  default = dev;
+in {
   dev = lib.dev.mkShell {
     packages = [
       nixpkgs.pkg-config
@@ -52,7 +51,7 @@ in rec {
       }
       {
         name = "PKG_CONFIG_PATH";
-        value = l.makeSearchPath "lib/pkgconfig" bin.packages.default.buildInputs;
+        value = l.makeSearchPath "lib/pkgconfig" bin.packages.cfdyndns.buildInputs;
       }
     ];
     imports = [
@@ -86,6 +85,10 @@ in rec {
         }
         {
           package = nixpkgs.shfmt;
+          category = "repo tools";
+        }
+        {
+          package = nixpkgs.yq-go;
           category = "repo tools";
         }
         {
