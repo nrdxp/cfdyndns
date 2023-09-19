@@ -93,7 +93,7 @@ impl Requests for DnsRecord {
 
 		if ip == current_ip {
 			log::info!(
-				"{} record `{}` is up to date",
+				"skipping {} record `{}`; already up to date",
 				self.content.get_type(),
 				self.name
 			);
