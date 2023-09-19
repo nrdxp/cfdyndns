@@ -6,15 +6,16 @@
   inherit (inputs.nixpkgs) pkgs;
 
   crane = inputs.crane.lib.overrideToolchain cells.repo.rust.toolchain;
-in {
-  # sane default for a binary package
-  default = crane.buildPackage {
+in rec {
+  default = cfdyndns;
+  cfdyndns = crane.buildPackage {
     src = std.incl self [
       "${self}/Cargo.lock"
       "${self}/Cargo.toml"
       "${self}/src"
     ];
 
-    buildInputs = [pkgs.openssl pkgs.pkgconfig];
+    buildInputs = [pkgs.openssl pkgs.pkg-config];
+    meta.description = "CloudFlare Dynamic DNS Client";
   };
 }
