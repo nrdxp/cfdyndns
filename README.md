@@ -4,11 +4,6 @@
 
 Reimplementation of [cloudflare-dyndns](https://github.com/colemickens/cloudflare-dyndns) in [Rust](https://www.rust-lang.org).
 
-## status known issues
-
-* paging is not implemented
-* some basic CI should be added
-
 ## building
 
 `cargo build`
