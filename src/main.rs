@@ -12,6 +12,7 @@ use tokio::task::JoinHandle;
 #[tokio::main]
 async fn main() -> Result<()> {
 	let cli = Cli::parse();
+	let (mut set_v4, mut set_v6) = (cli.ipv4, cli.ipv6);
 
 	pretty_env_logger::formatted_builder()
 		.filter_level(cli.verbose.log_level_filter())
@@ -23,23 +24,31 @@ async fn main() -> Result<()> {
 	let mut handles: Vec<JoinHandle<Result<()>>> =
 		Vec::with_capacity(cli.records.len());
 
+	if (false, false) == (cli.ipv4, cli.ipv6) {
+		(set_v4, set_v6) = (true, true);
+	}
+
 	for (name, id, a, aaaa) in records {
 		if let Some(id) = id {
-			if let Some(handle) = public_ipv4.update(
-				api_client.clone(),
-				a,
-				name.clone(),
-				id.clone(),
-			) {
-				handles.push(handle);
+			if set_v4 {
+				if let Some(handle) = public_ipv4.update(
+					api_client.clone(),
+					a,
+					name.clone(),
+					id.clone(),
+				) {
+					handles.push(handle);
+				}
 			}
-			if let Some(handle) = public_ipv6.update(
-				api_client.clone(),
-				aaaa,
-				name.clone(),
-				id.clone(),
-			) {
-				handles.push(handle);
+			if set_v6 {
+				if let Some(handle) = public_ipv6.update(
+					api_client.clone(),
+					aaaa,
+					name.clone(),
+					id.clone(),
+				) {
+					handles.push(handle);
+				}
 			}
 		}
 	}
