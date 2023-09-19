@@ -1,0 +1,48 @@
+# yq '. | explode(.)' .github/_ci.yml >| .github/workflows/ci.yml
+name: CI For CloudFlare Dynamic DNS client
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: std-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  discover:
+    outputs:
+      hits: ${{ steps.discovery.outputs.hits }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: nixbuild/nix-quick-install-action@v25
+      - uses: DeterminateSystems/magic-nix-cache-action@v2
+      - uses: divnix/std-action/discover@main
+        id: discovery
+
+  packages: &job
+    needs: discover
+    name: ${{ matrix.target.jobName }}
+    runs-on: ubuntu-latest
+    if: fromJSON(needs.discover.outputs.hits).packages.build != ''
+    strategy:
+      matrix:
+        target: ${{ fromJSON(needs.discover.outputs.hits).packages.build }}
+    steps:
+      - uses: nixbuild/nix-quick-install-action@v25
+      - uses: DeterminateSystems/magic-nix-cache-action@v2
+      - uses: divnix/std-action/run@main
+
+  shells:
+    <<: *job
+    if: fromJSON(needs.discover.outputs.hits).shells.build != ''
+    strategy:
+      matrix:
+        target: ${{ fromJSON(needs.discover.outputs.hits).shells.build }}
