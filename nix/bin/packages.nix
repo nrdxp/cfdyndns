@@ -5,7 +5,7 @@
   inherit (inputs) std self cells;
   inherit (inputs.nixpkgs) pkgs;
 
-  crane = inputs.crane.lib.overrideToolchain cells.repo.rust.toolchain;
+  crane = inputs.crane.lib.overrideToolchain cells.repo.rust;
 in rec {
   default = cfdyndns;
   cfdyndns = crane.buildPackage {
