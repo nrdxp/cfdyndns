@@ -4,20 +4,8 @@
   cell,
 }: let
   inherit (inputs) fenix;
-
-  # you may change "default" to any of "[minimal|default|complete|latest]" for variants
-  # see upstream fenix documentation for details
-  rustPkgs = builtins.removeAttrs fenix.packages.complete ["withComponents" "name" "type"];
 in
-  # add rust-analyzer from nightly, if not present
-  if rustPkgs ? rust-analyzer
-  then rustPkgs
-  else
-    rustPkgs
-    // {
-      inherit (fenix.packages) rust-analyzer;
-      toolchain = fenix.packages.combine [
-        (builtins.attrValues rustPkgs)
-        fenix.packages.rust-analyzer
-      ];
-    }
+  fenix.packages.fromToolchainFile {
+    file = "${inputs.self}/rust-toolchain.toml";
+    sha256 = "sha256-dxE7lmCFWlq0nl/wKcmYvpP9zqQbBitAQgZ1zx9Ooik=";
+  }

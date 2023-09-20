@@ -1,38 +1,48 @@
 {
-  description = "A very basic flake for Rust development";
+  description = "CI framework, devshell, and package for the Cloudflare Dynamic DNS Client";
 
   inputs.std.url = "github:divnix/std/v0.24.0-1";
   inputs.std.inputs.nixpkgs.follows = "nixpkgs";
+  inputs.std.inputs.devshell.follows = "devshell";
 
   inputs.fenix.url = "github:nix-community/fenix";
+
   inputs.crane.url = "github:ipetkov/crane";
   inputs.crane.inputs.nixpkgs.follows = "nixpkgs";
   inputs.crane.inputs.flake-compat.follows = "";
   inputs.crane.inputs.rust-overlay.follows = "";
 
-  inputs.std.inputs.devshell.url = "github:numtide/devshell";
+  inputs.devshell.url = "github:numtide/devshell";
+  inputs.devshell.inputs.nixpkgs.follows = "nixpkgs";
 
   inputs.nixpkgs.follows = "fenix/nixpkgs";
+
+  inputs.nosys.follows = "std/paisano/nosys";
 
   outputs = inputs @ {
     self,
     std,
+    nosys,
     ...
-  }:
+  }: let
+    systems = ["x86_64-linux"];
+  in
     std.growOn {
-      inherit inputs;
-      systems = ["x86_64-linux"];
+      inherit inputs systems;
       cellsFrom = ./nix;
       cellBlocks = with std.blockTypes; [
-        (installables "packages")
-        # Contribution Environment
-        (devshells "shells")
+        (installables "packages" {ci.build = true;})
+        (devshells "shells" {ci.build = true;})
         (pkgs "rust")
       ];
     } {
       devShells = std.harvest self ["repo" "shells"];
       packages = std.harvest self ["bin" "packages"];
-    };
+    }
+    (nosys (inputs // {inherit systems;}) ({self, ...}: {
+      packages.default = self.packages.cfdyndns;
+      devShells.default = self.devshells.dev;
+    }));
 
   nixConfig = {
     extra-substituters = [

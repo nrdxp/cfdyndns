@@ -7,15 +7,14 @@
   inherit (inputs.cells) bin;
 
   l = nixpkgs.lib // builtins;
-
+in {
   dev = lib.dev.mkShell {
     packages = [
       nixpkgs.pkg-config
     ];
     language.rust = {
       packageSet = cell.rust;
-      enableDefaultToolchain = true;
-      tools = ["toolchain"]; # fenix collates them all in a convenience derivation
+      enableDefaultToolchain = false;
     };
 
     devshell.startup.link-cargo-home = {
@@ -23,7 +22,7 @@
       text = ''
         # ensure CARGO_HOME is populated
         mkdir -p $PRJ_DATA_DIR/cargo
-        ln -snf -t $PRJ_DATA_DIR/cargo $(ls -d ${cell.rust.toolchain}/*)
+        ln -snf -t $PRJ_DATA_DIR/cargo $(ls -d ${cell.rust}/*)
       '';
     };
 
@@ -44,11 +43,15 @@
         # accessing via toolchain doesn't fail if it's not there
         # and rust-analyzer is graceful if it's not set correctly:
         # https://github.com/rust-lang/rust-analyzer/blob/7f1234492e3164f9688027278df7e915bc1d919c/crates/project-model/src/sysroot.rs#L196-L211
-        value = "${cell.rust.toolchain}/lib/rustlib/src/rust/library";
+        value = "${cell.rust}/lib/rustlib/src/rust/library";
+      }
+      {
+        name = "LD_LIBRARY_PATH";
+        value = "${cell.rust}/lib";
       }
       {
         name = "PKG_CONFIG_PATH";
-        value = l.makeSearchPath "lib/pkgconfig" bin.packages.default.buildInputs;
+        value = l.makeSearchPath "lib/pkgconfig" bin.packages.cfdyndns.buildInputs;
       }
     ];
     imports = [
@@ -59,7 +62,7 @@
       rustCmds =
         l.map (name: {
           inherit name;
-          package = cell.rust.toolchain; # has all bins
+          package = cell.rust; # has all bins
           category = "rust dev";
           # fenix doesn't include package descriptions, so pull those out of their equivalents in nixpkgs
           help = nixpkgs.${name}.meta.description;
@@ -68,6 +71,7 @@
           "cargo"
           "rustfmt"
           "rust-analyzer"
+          "clippy"
         ];
     in
       [
@@ -80,13 +84,18 @@
           category = "repo tools";
         }
         {
+          package = nixpkgs.shfmt;
+          category = "repo tools";
+        }
+        {
+          package = nixpkgs.yq-go;
+          category = "repo tools";
+        }
+        {
           package = std.cli.default;
           category = "std";
         }
       ]
       ++ rustCmds;
   };
-in {
-  inherit dev;
-  default = dev;
 }
