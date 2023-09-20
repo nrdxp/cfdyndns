@@ -7,7 +7,7 @@ edition = "2021"
 [dependencies]
 log = "0.4.8"
 pretty_env_logger = "0.5.0"
-serde_json = "1.0.48"
+serde_json = "1.0.107"
 public-ip = "^0.2"
 tokio = { version = "^1", features = ["rt-multi-thread", "macros"] }
 cloudflare = "^0.10"
