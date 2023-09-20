@@ -4,6 +4,11 @@ use clap_verbosity_flag::{InfoLevel, Verbosity};
 use cloudflare::framework::{
 	async_api::Client, auth::Credentials, Environment, HttpApiClientConfig,
 };
+use std::collections::HashSet;
+
+fn parse_records(args: &str) -> Result<HashSet<String>> {
+	Ok(args.split(',').map(|s| s.into()).collect())
+}
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -14,9 +19,9 @@ pub struct Cli {
 		short,
 		env = "CLOUDFLARE_RECORDS",
 		value_name = "RECORDS",
-		value_delimiter(',')
+		value_parser(parse_records)
 	)]
-	pub records: Vec<String>,
+	pub records: HashSet<String>,
 	/// recommended: The CloudFlare API token to authenticate with
 	#[clap(
 		long,
