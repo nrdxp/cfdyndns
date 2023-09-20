@@ -15,7 +15,7 @@ anyhow = "^1"
 clap-verbosity-flag = "^2.0"
 
 [dependencies.clap]
-version = "^4.2"
+version = "^4.4"
 features = ["wrap_help", "derive", "env"]
 
 [patch.crates-io]
