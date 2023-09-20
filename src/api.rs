@@ -1,5 +1,9 @@
+use anyhow::Result;
 use clap::Parser;
 use clap_verbosity_flag::{InfoLevel, Verbosity};
+use cloudflare::framework::{
+	async_api::Client, auth::Credentials, Environment, HttpApiClientConfig,
+};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -47,4 +51,23 @@ pub struct Cli {
 
 	#[clap(flatten)]
 	pub verbose: Verbosity<InfoLevel>,
+}
+
+pub fn get_client(cli: &Cli) -> Result<Client> {
+	let credentials: Credentials = if let Some(token) = cli.token.clone() {
+		Ok(Credentials::UserAuthToken { token })
+	} else if let (Some(key), Some(email)) =
+		(cli.key.clone(), cli.email.clone())
+	{
+		log::warn!("API Key & Email combo is deprecated. Please switch to using an API token");
+		Ok(Credentials::UserAuthKey { email, key })
+	} else {
+		Err(anyhow::anyhow!("No valid credentials passed"))
+	}?;
+
+	Client::new(
+		credentials,
+		HttpApiClientConfig::default(),
+		Environment::Production,
+	)
 }

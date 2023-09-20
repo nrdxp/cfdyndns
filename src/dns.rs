@@ -1,0 +1,237 @@
+use crate::api::Cli;
+use anyhow::Result;
+use cloudflare::{
+	endpoints::{
+		dns::{
+			CreateDnsRecord, CreateDnsRecordParams, DeleteDnsRecord,
+			DnsContent, DnsRecord, ListDnsRecords, ListDnsRecordsParams, Meta,
+			UpdateDnsRecord, UpdateDnsRecordParams,
+		},
+		zone::{ListZones, ListZonesParams},
+	},
+	framework::async_api::{ApiClient, Client},
+};
+use std::collections::HashSet;
+use std::net::IpAddr;
+use std::sync::Arc;
+
+pub type Fqdn = String;
+pub type ZoneId = String;
+type Record = (Fqdn, Option<ZoneId>, Option<DnsRecord>, Option<DnsRecord>);
+
+pub trait Clone_ {
+	fn clone(&self) -> Self;
+}
+
+trait Info {
+	fn get_ip(&self) -> Option<IpAddr>;
+	fn get_type(&self) -> &str;
+}
+
+pub trait Requests {
+	fn update_request(
+		&self,
+		ip: IpAddr,
+	) -> Option<UpdateDnsRecord>;
+	fn create_request<'a>(
+		ip: IpAddr,
+		name: &'a str,
+		id: &'a str,
+	) -> CreateDnsRecord<'a>;
+	fn delete_request(&self) -> DeleteDnsRecord;
+}
+impl Clone_ for DnsRecord {
+	fn clone(&self) -> Self {
+		Self {
+			name: self.name.to_owned(),
+			meta: Meta {
+				auto_added: self.meta.auto_added,
+			},
+			locked: self.locked,
+			ttl: self.ttl,
+			zone_id: self.zone_id.to_owned(),
+			modified_on: self.modified_on,
+			created_on: self.created_on,
+			proxiable: self.proxiable,
+			proxied: self.proxied,
+			content: self.content.clone(),
+			id: self.id.to_owned(),
+			zone_name: self.zone_name.to_owned(),
+		}
+	}
+}
+
+impl Info for DnsContent {
+	fn get_ip(&self) -> Option<IpAddr> {
+		match self {
+			DnsContent::A { content: ip } => Some(IpAddr::V4(*ip)),
+			DnsContent::AAAA { content: ip } => Some(IpAddr::V6(*ip)),
+			_ => None,
+		}
+	}
+	fn get_type(&self) -> &str {
+		match self {
+			DnsContent::A { content: _ } => "A",
+			DnsContent::AAAA { content: _ } => "AAAA",
+			DnsContent::CNAME { content: _ } => "CNAME",
+			DnsContent::NS { content: _ } => "NS",
+			DnsContent::MX {
+				content: _,
+				priority: _,
+			} => "MX",
+			DnsContent::TXT { content: _ } => "TXT",
+			DnsContent::SRV { content: _ } => "SRV",
+		}
+	}
+}
+
+impl Requests for DnsRecord {
+	fn update_request(
+		&self,
+		ip: IpAddr,
+	) -> Option<UpdateDnsRecord> {
+		let current_ip = self.content.get_ip()?;
+
+		if ip == current_ip {
+			log::info!(
+				"{} record `{}` is up to date",
+				self.content.get_type(),
+				self.name
+			);
+			return None;
+		}
+
+		let content = match (self.content.clone(), ip) {
+			(DnsContent::A { content: _ }, IpAddr::V4(ip)) => {
+				Some(DnsContent::A { content: ip })
+			}
+			(DnsContent::AAAA { content: _ }, IpAddr::V6(ip)) => {
+				Some(DnsContent::AAAA { content: ip })
+			}
+			_ => None,
+		}?;
+
+		log::info!("request: {} ({} → {})\n", self.name, current_ip, ip);
+		Some(UpdateDnsRecord {
+			zone_identifier: &self.zone_id,
+			identifier: &self.id,
+			params: UpdateDnsRecordParams {
+				name: &self.name,
+				ttl: self.ttl.into(),
+				proxied: self.proxied.into(),
+				content,
+			},
+		})
+	}
+	fn create_request<'a>(
+		ip: IpAddr,
+		name: &'a str,
+		id: &'a str,
+	) -> CreateDnsRecord<'a> {
+		log::info!("request: {} → {}\n", name, ip);
+		CreateDnsRecord {
+			zone_identifier: id,
+			params: CreateDnsRecordParams {
+				name,
+				ttl: Some(1),
+				priority: None,
+				proxied: Some(false),
+				content: match ip {
+					IpAddr::V4(ip) => DnsContent::A { content: ip },
+					IpAddr::V6(ip) => DnsContent::AAAA { content: ip },
+				},
+			},
+		}
+	}
+
+	fn delete_request(&self) -> DeleteDnsRecord {
+		log::info!(
+			"deleting {} record: {}\n",
+			self.content.get_type(),
+			self.name
+		);
+		DeleteDnsRecord {
+			zone_identifier: &self.zone_id,
+			identifier: &self.id,
+		}
+	}
+}
+
+pub async fn get_records(
+	cli: &Cli,
+	client: Arc<Client>,
+) -> Result<Vec<Record>> {
+	let params = ListZones {
+		params: ListZonesParams::default(),
+	};
+	let zones = client.request(&params).await?.result;
+
+	let mut handles = Vec::with_capacity(zones.len());
+	let mut records = Vec::with_capacity(zones.len() * 10);
+
+	for zone in &zones {
+		let client = client.clone();
+		let zone_id = zone.id.to_string();
+		handles.push(tokio::spawn(async move {
+			client
+				.request(&ListDnsRecords {
+					zone_identifier: &zone_id,
+					params: ListDnsRecordsParams::default(),
+				})
+				.await
+		}));
+	}
+
+	for handle in handles {
+		records.extend(handle.await??.result)
+	}
+
+	let mut start: HashSet<String> = cli.records.clone().into_iter().collect();
+	let mut invalid = vec![];
+	start.retain(|name| {
+		let mut res = false;
+		if let Ok(n) = addr::parse_domain_name(name) {
+			res = n.has_known_suffix();
+		}
+		if !res {
+			invalid.push(name.clone());
+		}
+		res
+	});
+
+	for name in invalid {
+		log::warn!("{} is an invalid domain name; skipping...", name);
+	}
+
+	let locals = start
+		.iter()
+		.map(|r| {
+			(
+				r.to_owned(),
+				zones
+					.iter()
+					.find(|z| r.contains(&z.name))
+					.map(|z| z.id.to_owned()),
+				records
+					.iter()
+					.find(|rec| {
+						if let DnsContent::A { content: _ } = rec.content {
+							return rec.name == *r;
+						}
+						false
+					})
+					.map(|r| r.clone()),
+				records
+					.iter()
+					.find(|rec| {
+						if let DnsContent::AAAA { content: _ } = rec.content {
+							return rec.name == *r;
+						}
+						false
+					})
+					.map(|r| r.clone()),
+			)
+		})
+		.collect();
+	Ok(locals)
+}
