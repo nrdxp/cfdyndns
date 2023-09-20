@@ -50,6 +50,8 @@ async fn main() -> Result<()> {
 					handles.push(handle);
 				}
 			}
+		} else {
+			log::warn!("skipping `{}`; no valid DNS zone", name)
 		}
 	}
 
