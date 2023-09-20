@@ -11,7 +11,6 @@ use cloudflare::{
 	},
 	framework::async_api::{ApiClient, Client},
 };
-use std::collections::HashSet;
 use std::net::IpAddr;
 use std::sync::Arc;
 
@@ -186,24 +185,8 @@ pub async fn get_records(
 		records.extend(handle.await??.result)
 	}
 
-	let mut start: HashSet<String> = cli.records.clone().into_iter().collect();
-	let mut invalid = vec![];
-	start.retain(|name| {
-		let mut res = false;
-		if let Ok(n) = addr::parse_domain_name(name) {
-			res = n.has_known_suffix();
-		}
-		if !res {
-			invalid.push(name.clone());
-		}
-		res
-	});
-
-	for name in invalid {
-		log::warn!("{} is an invalid domain name; skipping...", name);
-	}
-
-	let locals = start
+	let locals = cli
+		.records
 		.iter()
 		.map(|r| {
 			(
