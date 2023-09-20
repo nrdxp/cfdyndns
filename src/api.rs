@@ -26,8 +26,8 @@ pub struct Cli {
 		value_name = "TOKEN",
 		required_unless_present_all(["key", "email"])
 	)]
-	/// deprecated: The CloudFlare API key to authenticate with, also requires email
 	pub token: Option<String>,
+	/// deprecated: The CloudFlare API key to authenticate with, also requires email
 	#[clap(
 		long,
 		short,
@@ -37,8 +37,8 @@ pub struct Cli {
 		required_unless_present("token"),
 		requires("email")
 	)]
-	/// deprecated: The CloudFlare email to authenticate with, also requires API key
 	pub key: Option<String>,
+	/// deprecated: The CloudFlare email to authenticate with, also requires API key
 	#[clap(
 		long,
 		short,
@@ -51,6 +51,12 @@ pub struct Cli {
 
 	#[clap(flatten)]
 	pub verbose: Verbosity<InfoLevel>,
+	/// set an AAAA record to the host's ipv6 address
+	#[clap(short = '6')]
+	pub ipv6: bool,
+	/// set an A record to the host's ipv4 address
+	#[clap(short = '4')]
+	pub ipv4: bool,
 }
 
 pub fn get_client(cli: &Cli) -> Result<Client> {
