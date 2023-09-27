@@ -5,8 +5,9 @@ use cloudflare::framework::{
 	async_api::Client, auth::Credentials, Environment, HttpApiClientConfig,
 };
 use std::collections::HashSet;
+use std::sync::Arc;
 
-fn parse_records(args: &str) -> Result<HashSet<String>> {
+fn parse_records(args: &str) -> Result<HashSet<Arc<str>>> {
 	Ok(args.split(',').map(|s| s.into()).collect())
 }
 
@@ -21,7 +22,7 @@ pub struct Cli {
 		value_name = "RECORDS",
 		value_parser(parse_records)
 	)]
-	pub records: HashSet<String>,
+	pub records: HashSet<Arc<str>>,
 	/// recommended: The CloudFlare API token to authenticate with
 	#[clap(
 		long,

@@ -40,8 +40,6 @@ impl DynDns for Option<IpAddr> {
 					_ => None,
 				}
 			} else {
-				let name = name.clone();
-				let id = id.clone();
 				Some(tokio::spawn(async move {
 					client
 						.request(&DnsRecord::create_request(ip, &name, &id))
