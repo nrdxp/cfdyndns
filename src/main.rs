@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
 	let mut handles: Vec<JoinHandle<Result<()>>> =
 		Vec::with_capacity(cli.records.len());
 
-	if (false, false) == (cli.ipv4, cli.ipv6) {
+	if (false, false) == (set_v4, set_v6) {
 		(set_v4, set_v6) = (true, true);
 	}
 

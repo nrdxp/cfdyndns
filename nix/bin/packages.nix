@@ -14,8 +14,12 @@ in {
       "${self}/src"
     ];
 
+    nativeBuildInputs = [pkgs.upx];
     buildInputs = [pkgs.openssl pkgs.pkg-config];
     LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [cells.repo.rust];
+    postInstall = ''
+      upx --best --lzma $out/bin/cfdyndns
+    '';
     meta.description = "CloudFlare Dynamic DNS Client";
   };
 }

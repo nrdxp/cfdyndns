@@ -14,8 +14,8 @@ use cloudflare::{
 use std::net::IpAddr;
 use std::sync::Arc;
 
-pub type Fqdn = String;
-pub type ZoneId = String;
+pub type Fqdn = Arc<str>;
+pub type ZoneId = Arc<str>;
 type Record = (Fqdn, Option<ZoneId>, Option<DnsRecord>, Option<DnsRecord>);
 
 pub trait Clone_ {
@@ -53,7 +53,7 @@ impl Clone_ for DnsRecord {
 			created_on: self.created_on,
 			proxiable: self.proxiable,
 			proxied: self.proxied,
-			content: self.content.clone(),
+			content: self.content.to_owned(),
 			id: self.id.to_owned(),
 			zone_name: self.zone_name.to_owned(),
 		}
@@ -185,21 +185,21 @@ pub async fn get_records(
 		records.extend(handle.await??.result)
 	}
 
-	let locals = cli
+	Ok(cli
 		.records
 		.iter()
 		.map(|r| {
 			(
-				r.to_owned(),
+				r.clone(),
 				zones
 					.iter()
 					.find(|z| r.contains(&z.name))
-					.map(|z| z.id.to_owned()),
+					.map(|z| Arc::from(&*z.id)),
 				records
 					.iter()
 					.find(|rec| {
 						if let DnsContent::A { content: _ } = rec.content {
-							return rec.name == *r;
+							return rec.name == **r;
 						}
 						false
 					})
@@ -208,13 +208,12 @@ pub async fn get_records(
 					.iter()
 					.find(|rec| {
 						if let DnsContent::AAAA { content: _ } = rec.content {
-							return rec.name == *r;
+							return rec.name == **r;
 						}
 						false
 					})
 					.map(|r| r.clone()),
 			)
 		})
-		.collect();
-	Ok(locals)
+		.collect())
 }
