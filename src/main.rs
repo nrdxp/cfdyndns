@@ -18,7 +18,7 @@ async fn main() -> Result<()> {
 		.filter_level(cli.verbose.log_level_filter())
 		.init();
 
-	let (public_ipv4, public_ipv6) = ip::get_ips().await?;
+	let (public_ipv4, public_ipv6) = ip::get_ips(cli.local).await?;
 	let api_client = Arc::new(api::get_client(&cli)?);
 	let records = dns::get_records(&cli, api_client.clone()).await?;
 	let mut handles: Vec<JoinHandle<Result<()>>> =

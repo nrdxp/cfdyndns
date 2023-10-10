@@ -2,6 +2,7 @@ use crate::dns::{Fqdn, Requests, ZoneId};
 use anyhow::Result;
 use cloudflare::endpoints::dns::{DnsContent, DnsRecord};
 use cloudflare::framework::async_api::{ApiClient, Client};
+use local_ip_address as local;
 use public_ip::{http, Version};
 use std::net::IpAddr;
 use std::sync::Arc;
@@ -58,11 +59,15 @@ impl DynDns for Option<IpAddr> {
 	}
 }
 
-pub async fn get_ips() -> Result<IpPair> {
-	let (ipv4, ipv6) = tokio::join!(
-		public_ip::addr_with(http::ALL, Version::V4),
-		public_ip::addr_with(public_ip::ALL, Version::V6)
-	);
+pub async fn get_ips(loc: bool) -> Result<IpPair> {
+	let (ipv4, ipv6) = if loc {
+		(local::local_ip().ok(), local::local_ipv6().ok())
+	} else {
+		tokio::join!(
+			public_ip::addr_with(http::ALL, Version::V4),
+			public_ip::addr_with(public_ip::ALL, Version::V6)
+		)
+	};
 
 	if (None, None) == (ipv4, ipv6) {
 		Err(anyhow::anyhow!(
