@@ -55,6 +55,10 @@ pub struct Cli {
 	)]
 	pub email: Option<String>,
 
+	/// Use local network ip
+	#[clap(short, long)]
+	pub local: bool,
+
 	#[clap(flatten)]
 	pub verbose: Verbosity<InfoLevel>,
 	/// set an AAAA record to the host's ipv6 address

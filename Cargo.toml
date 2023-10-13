@@ -12,6 +12,7 @@ tokio = { version = "^1", features = ["rt-multi-thread", "macros"] }
 cloudflare = "^0.10"
 anyhow = "^1"
 clap-verbosity-flag = "^2.0"
+local-ip-address = "^0.5.0"
 
 [dependencies.clap]
 version = "^4.4"
