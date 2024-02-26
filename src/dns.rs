@@ -9,9 +9,12 @@ use cloudflare::{
 		},
 		zone::{ListZones, ListZonesParams},
 	},
-	framework::async_api::{ApiClient, Client},
+	framework::{
+		async_api::{ApiClient, Client},
+		SearchMatch,
+	},
 };
-use std::net::IpAddr;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
 
 pub type Fqdn = Arc<str>;
@@ -169,16 +172,29 @@ pub async fn get_records(
 	let mut records = Vec::with_capacity(zones.len() * 10);
 
 	for zone in &zones {
-		let client = client.clone();
-		let zone_id = zone.id.to_string();
-		handles.push(tokio::spawn(async move {
-			client
-				.request(&ListDnsRecords {
-					zone_identifier: &zone_id,
-					params: ListDnsRecordsParams::default(),
-				})
-				.await
-		}));
+		for dns_content in [
+			DnsContent::A {
+				content: Ipv4Addr::new(0, 0, 0, 0),
+			},
+			DnsContent::AAAA {
+				content: Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0),
+			},
+		] {
+			let client = client.clone();
+			let zone_id = zone.id.to_string();
+			handles.push(tokio::spawn(async move {
+				client
+					.request(&ListDnsRecords {
+						zone_identifier: &zone_id,
+						params: ListDnsRecordsParams {
+							record_type: Some(dns_content),
+							search_match: Some(SearchMatch::Any),
+							..Default::default()
+						},
+					})
+					.await
+			}));
+		}
 	}
 
 	for handle in handles {
