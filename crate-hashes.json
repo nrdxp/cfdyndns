@@ -1,0 +1,4 @@
+{
+  "cloudflare 0.10.1 (git+https://github.com/jcgruenhage/cloudflare-rs.git?branch=make-owner-fields-optional#02397fc4211886548a31a0731b240f2e17309de4)": "0njiqhsyxgl8064maj8shagvkamf6rb89k5wgxqkh47q1l0vi580",
+  "public-ip 0.2.2 (git+https://github.com/jcgruenhage/rust-public-ip.git?branch=cloudflare-provider#f0f0e68aebf9d796deaa3af04c8c6d4df3c515fe)": "0djzfp08rja39hyh9z9q180s4nycbixh5f19nglp78q087vn2dqc"
+}

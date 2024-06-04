@@ -14,7 +14,8 @@ in {
     ];
     language.rust = {
       packageSet = cell.rust;
-      enableDefaultToolchain = false;
+      enableDefaultToolchain = true;
+      tools = ["toolchain"]; # fenix collates them all in a convenience derivation
     };
 
     devshell.startup.link-cargo-home = {
@@ -22,7 +23,7 @@ in {
       text = ''
         # ensure CARGO_HOME is populated
         mkdir -p $PRJ_DATA_DIR/cargo
-        ln -snf -t $PRJ_DATA_DIR/cargo $(ls -d ${cell.rust}/*)
+        ln -snf -t $PRJ_DATA_DIR/cargo $(ls -d ${cell.rust.toolchain}/*)
       '';
     };
 
@@ -43,11 +44,11 @@ in {
         # accessing via toolchain doesn't fail if it's not there
         # and rust-analyzer is graceful if it's not set correctly:
         # https://github.com/rust-lang/rust-analyzer/blob/7f1234492e3164f9688027278df7e915bc1d919c/crates/project-model/src/sysroot.rs#L196-L211
-        value = "${cell.rust}/lib/rustlib/src/rust/library";
+        value = "${cell.rust.toolchain}/lib/rustlib/src/rust/library";
       }
       {
         name = "LD_LIBRARY_PATH";
-        value = "${cell.rust}/lib";
+        value = "${cell.rust.toolchain}/lib";
       }
       {
         name = "PKG_CONFIG_PATH";
@@ -62,7 +63,7 @@ in {
       rustCmds =
         l.map (name: {
           inherit name;
-          package = cell.rust; # has all bins
+          package = cell.rust.toolchain; # has all bins
           category = "rust dev";
           # fenix doesn't include package descriptions, so pull those out of their equivalents in nixpkgs
           help = nixpkgs.${name}.meta.description;
@@ -94,6 +95,10 @@ in {
         {
           package = std.cli.default;
           category = "std";
+        }
+        {
+          package = nixpkgs.crate2nix;
+          category = "rust dev";
         }
       ]
       ++ rustCmds;

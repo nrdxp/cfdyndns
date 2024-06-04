@@ -22,8 +22,10 @@ jobs:
       hits: ${{ steps.discovery.outputs.hits }}
     runs-on: ubuntu-latest
     steps:
-      - uses: nixbuild/nix-quick-install-action@v25
-      - uses: DeterminateSystems/magic-nix-cache-action@v2
+      - uses: &quick
+          nixbuild/nix-quick-install-action@v28
+      - uses:  &magic
+          DeterminateSystems/magic-nix-cache-action@v7
       - uses: divnix/std-action/discover@main
         id: discovery
 
@@ -36,8 +38,8 @@ jobs:
       matrix:
         target: ${{ fromJSON(needs.discover.outputs.hits).packages.build }}
     steps:
-      - uses: nixbuild/nix-quick-install-action@v25
-      - uses: DeterminateSystems/magic-nix-cache-action@v2
+      - uses: *quick
+      - uses: *magic
       - uses: divnix/std-action/run@main
 
   shells:
