@@ -2,24 +2,22 @@
   inputs,
   cell,
 }: let
-  inherit (inputs) std self cells;
   inherit (inputs.nixpkgs) pkgs;
-
-  crane = inputs.crane.lib.overrideToolchain cells.repo.rust;
+  inherit (inputs.cells.repo.rust) toolchain;
+  buildRustCrateForPkgs = pkgs:
+    pkgs.buildRustCrate.override {
+      rustc = toolchain;
+      cargo = toolchain;
+    };
 in {
-  cfdyndns = crane.buildPackage {
-    src = std.incl self [
-      "${self}/Cargo.lock"
-      "${self}/Cargo.toml"
-      "${self}/src"
-    ];
-
-    nativeBuildInputs = [pkgs.upx];
-    buildInputs = [pkgs.openssl pkgs.pkg-config];
-    LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [cells.repo.rust];
-    postInstall = ''
-      upx --best --lzma $out/bin/cfdyndns
-    '';
-    meta.description = "CloudFlare Dynamic DNS Client";
-  };
+  cfdyndns =
+    (pkgs.callPackage "${inputs.self}/Cargo.nix" {
+      inherit buildRustCrateForPkgs pkgs;
+      inherit (inputs) nixpkgs;
+    })
+    .rootCrate
+    .build
+    .overrideAttrs (_: {
+      meta.description = "CloudFlare Dynamic DNS Client";
+    });
 }
