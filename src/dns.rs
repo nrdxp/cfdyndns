@@ -9,10 +9,7 @@ use cloudflare::{
 		},
 		zone::{ListZones, ListZonesParams},
 	},
-	framework::{
-		async_api::{ApiClient, Client},
-		SearchMatch,
-	},
+	framework::{async_api::Client, SearchMatch},
 };
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;

@@ -1,7 +1,7 @@
 use crate::dns::{Fqdn, Requests, ZoneId};
 use anyhow::Result;
 use cloudflare::endpoints::dns::{DnsContent, DnsRecord};
-use cloudflare::framework::async_api::{ApiClient, Client};
+use cloudflare::framework::async_api::Client;
 use local_ip_address as local;
 use public_ip::{http, Version};
 use std::net::IpAddr;
