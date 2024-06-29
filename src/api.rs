@@ -81,9 +81,9 @@ pub fn get_client(cli: &Cli) -> Result<Client> {
 		Err(anyhow::anyhow!("No valid credentials passed"))
 	}?;
 
-	Client::new(
+	Ok(Client::new(
 		credentials,
 		HttpApiClientConfig::default(),
 		Environment::Production,
-	)
+	)?)
 }
