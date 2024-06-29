@@ -406,7 +406,7 @@ rec {
         features = {
           "default" = [ "std" ];
         };
-        resolvedDefaultFeatures = [ "alloc" "default" "std" ];
+        resolvedDefaultFeatures = [ "alloc" ];
       };
       "base64 0.21.4" = rec {
         crateName = "base64";
@@ -660,7 +660,7 @@ rec {
           "winapi" = [ "windows-targets" ];
           "windows-targets" = [ "dep:windows-targets" ];
         };
-        resolvedDefaultFeatures = [ "alloc" "android-tzdata" "clock" "default" "iana-time-zone" "js-sys" "oldtime" "serde" "std" "wasm-bindgen" "wasmbind" "winapi" "windows-targets" ];
+        resolvedDefaultFeatures = [ "alloc" "android-tzdata" "clock" "iana-time-zone" "js-sys" "serde" "std" "wasm-bindgen" "wasmbind" "winapi" "windows-targets" ];
       };
       "clap" = rec {
         crateName = "clap";
@@ -808,38 +808,24 @@ rec {
       };
       "cloudflare" = rec {
         crateName = "cloudflare";
-        version = "0.10.1";
+        version = "0.12.0";
         edition = "2018";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/jcgruenhage/cloudflare-rs.git";
-          rev = "02397fc4211886548a31a0731b240f2e17309de4";
-          sha256 = "0njiqhsyxgl8064maj8shagvkamf6rb89k5wgxqkh47q1l0vi580";
+          url = "https://github.com/Wyn-Price/cloudflare-rs.git";
+          rev = "a6179f8b3b520b17788f39fcd5f103e81a87a890";
+          sha256 = "1myga8ys6i35qnwg16kcc212b8r0acpi8wyhmcvzk0vvffcbkw7k";
         };
         authors = [
-          "Areg Harutyunyan <areg@cloudflare.com>"
+          "Noah Kennedy <nkennedy@cloudflare.com>"
+          "Jeff Hiner <jhiner@cloudflare.com>"
         ];
         dependencies = [
           {
-            name = "anyhow";
-            packageId = "anyhow";
-          }
-          {
-            name = "async-trait";
-            packageId = "async-trait";
-          }
-          {
-            name = "base64";
-            packageId = "base64 0.13.1";
-          }
-          {
-            name = "cfg-if";
-            packageId = "cfg-if";
-          }
-          {
             name = "chrono";
             packageId = "chrono";
-            features = [ "serde" ];
+            usesDefaultFeatures = false;
+            features = [ "clock" "serde" "std" "wasmbind" ];
           }
           {
             name = "http";
@@ -853,7 +839,7 @@ rec {
             name = "reqwest";
             packageId = "reqwest";
             usesDefaultFeatures = false;
-            features = [ "json" "blocking" ];
+            features = [ "json" ];
           }
           {
             name = "serde";
@@ -865,12 +851,17 @@ rec {
             packageId = "serde_json";
           }
           {
-            name = "serde_qs";
-            packageId = "serde_qs";
+            name = "serde_urlencoded";
+            packageId = "serde_urlencoded";
           }
           {
             name = "serde_with";
             packageId = "serde_with";
+            features = [ "base64" ];
+          }
+          {
+            name = "thiserror";
+            packageId = "thiserror";
           }
           {
             name = "url";
@@ -879,12 +870,14 @@ rec {
           {
             name = "uuid";
             packageId = "uuid";
-            features = [ "serde" "v4" ];
+            features = [ "serde" ];
           }
         ];
         features = {
+          "blocking" = [ "reqwest/blocking" ];
           "default" = [ "default-tls" ];
           "default-tls" = [ "reqwest/default-tls" ];
+          "mockito" = [ "dep:mockito" ];
           "rustls-tls" = [ "reqwest/rustls-tls" ];
         };
         resolvedDefaultFeatures = [ "default" "default-tls" ];
@@ -4062,7 +4055,7 @@ rec {
           "wasm-streams" = [ "dep:wasm-streams" ];
           "webpki-roots" = [ "dep:webpki-roots" ];
         };
-        resolvedDefaultFeatures = [ "__tls" "blocking" "default-tls" "hyper-tls" "json" "native-tls-crate" "serde_json" "tokio-native-tls" ];
+        resolvedDefaultFeatures = [ "__tls" "default-tls" "hyper-tls" "json" "native-tls-crate" "serde_json" "tokio-native-tls" ];
       };
       "rustc-demangle" = rec {
         crateName = "rustc-demangle";
@@ -4414,44 +4407,6 @@ rec {
         };
         resolvedDefaultFeatures = [ "alloc" "default" "std" ];
       };
-      "serde_qs" = rec {
-        crateName = "serde_qs";
-        version = "0.10.1";
-        edition = "2018";
-        sha256 = "1yhsx3b1g1ccdzpkbfrh0vnrh2wirb575bm14cwk7zm25hg3zb4c";
-        authors = [
-          "Sam Scott <sam@osohq.com>"
-        ];
-        dependencies = [
-          {
-            name = "percent-encoding";
-            packageId = "percent-encoding";
-          }
-          {
-            name = "serde";
-            packageId = "serde";
-          }
-          {
-            name = "thiserror";
-            packageId = "thiserror";
-          }
-        ];
-        features = {
-          "actix-web2" = [ "dep:actix-web2" ];
-          "actix-web3" = [ "dep:actix-web3" ];
-          "actix-web4" = [ "dep:actix-web4" ];
-          "actix2" = [ "actix-web2" "futures" ];
-          "actix3" = [ "actix-web3" "futures" ];
-          "actix4" = [ "actix-web4" "futures" ];
-          "axum" = [ "axum-framework" "futures" ];
-          "axum-framework" = [ "dep:axum-framework" ];
-          "futures" = [ "dep:futures" ];
-          "tracing" = [ "dep:tracing" ];
-          "warp" = [ "futures" "tracing" "warp-framework" ];
-          "warp-framework" = [ "dep:warp-framework" ];
-        };
-        resolvedDefaultFeatures = [ "default" ];
-      };
       "serde_urlencoded" = rec {
         crateName = "serde_urlencoded";
         version = "0.7.1";
@@ -4565,7 +4520,7 @@ rec {
           "std" = [ "alloc" "serde/std" "chrono_0_4?/clock" "chrono_0_4?/std" "indexmap_1?/std" "time_0_3?/serde-well-known" "time_0_3?/std" ];
           "time_0_3" = [ "dep:time_0_3" ];
         };
-        resolvedDefaultFeatures = [ "alloc" "default" "macros" "std" ];
+        resolvedDefaultFeatures = [ "alloc" "base64" "default" "macros" "std" ];
       };
       "serde_with_macros" = rec {
         crateName = "serde_with_macros";
@@ -5821,12 +5776,6 @@ rec {
         ];
         dependencies = [
           {
-            name = "getrandom";
-            packageId = "getrandom";
-            rename = "getrandom";
-            optional = true;
-          }
-          {
             name = "serde";
             packageId = "serde";
             optional = true;
@@ -5860,7 +5809,7 @@ rec {
           "wasm-bindgen" = [ "dep:wasm-bindgen" ];
           "zerocopy" = [ "dep:zerocopy" ];
         };
-        resolvedDefaultFeatures = [ "default" "getrandom" "rng" "serde" "std" "v4" ];
+        resolvedDefaultFeatures = [ "default" "serde" "std" ];
       };
       "vcpkg" = rec {
         crateName = "vcpkg";
